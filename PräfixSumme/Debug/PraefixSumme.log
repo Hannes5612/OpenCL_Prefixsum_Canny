@@ -1,0 +1,7 @@
+﻿  OpenCLMgr.cpp
+  PraefixSumme.cpp
+D:\Studium\PMPP_working\PraefixSummeBasis\PräfixSummeBasis\PraefixSumme.cpp(55,33): warning C4838: Konvertierung von "int" zu "size_t" erfordert eine einschränkende Konvertierung
+D:\Studium\PMPP_working\PraefixSummeBasis\PräfixSummeBasis\PraefixSumme.cpp(56,32): warning C4838: Konvertierung von "int" zu "size_t" erfordert eine einschränkende Konvertierung
+  Code wird generiert...
+  PraefixSumme.vcxproj -> D:\Studium\PMPP_working\PraefixSummeBasis\PräfixSummeBasis\Debug\PraefixSumme.exe
+          1 Datei(en) kopiert.
