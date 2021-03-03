@@ -6,7 +6,7 @@ __kernel praefixsumme256_kernel(__global int* input_buffer_a, __global int* outp
 
     // Copy to local memory
     __local int localArray[256];
-    localArray[lid] = input_buffer[gid];
+    localArray[lid] = input_buffer_a[gid];
     barrier(CLK_LOCAL_MEM_FENCE);
 
     // Save last element to later calculate 
@@ -66,12 +66,12 @@ __kernel praefixsumme256_kernel(__global int* input_buffer_a, __global int* outp
         spacing >>= 1;          // Halve
     }
 
-    // Write result to global memory
-    output_buffer[gid] = localArray[lid];
+    // Write result to global memory1
+    output_buffer_b[gid] = localArray[lid];
 
     // Write 
     if (lid == 255) {
-        blocksum_output_buffer[gpid] = localArray[lid] + lastElementValue;
+        blocksum_buffer_c[gpid] = localArray[lid] + lastElementValue;
     }
 
 }
