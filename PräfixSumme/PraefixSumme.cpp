@@ -37,9 +37,10 @@ int praefixsumme_own(cl_mem input_buffer_a, cl_mem output_buffer_b_e, int size, 
 	
 	cl_int status;
 	int workgroup_size = 256;
+	cl_int new_size = (size + (256 - (size % 256)));
 
 	// Create new buffer for blocksums and blocksum prefixes
-	cl_mem blocksum_buffer_c = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, size / 256 * sizeof(cl_int), NULL, NULL);
+	cl_mem blocksum_buffer_c = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, (new_size / workgroup_size) * sizeof(cl_int), NULL, NULL);
 
 	// Set kernel arguments.
 	status = clSetKernelArg(mgr.praefixsumme256_kernel, 0, sizeof(cl_mem), (void*)&input_buffer_a);
@@ -50,7 +51,7 @@ int praefixsumme_own(cl_mem input_buffer_a, cl_mem output_buffer_b_e, int size, 
 	CHECK_SUCCESS("Error: setting kernel1 argument 3!")
 
 	// Run the kernel.
-	size_t global_work_size[1] = { workgroup_size };
+	size_t global_work_size[1] = { new_size };
 	size_t local_work_size[1] = { workgroup_size };
 	status = clEnqueueNDRangeKernel(mgr.commandQueue, mgr.praefixsumme256_kernel, 1, NULL, global_work_size, local_work_size, 0, NULL, NULL);
 	CHECK_SUCCESS(status)
@@ -59,7 +60,6 @@ int praefixsumme_own(cl_mem input_buffer_a, cl_mem output_buffer_b_e, int size, 
 
 	// recursive call to calculate prefix sums in blocksums_buffer_c, if size > 256
 	if (size > 256) {
-		cl_int new_size = (size + (256 - (size % 256)));
 		// Create Buffer D
 		cl_mem helper_buffer_d = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, new_size / 256 * sizeof(cl_int), NULL, NULL);
 
@@ -97,11 +97,11 @@ int main(int argc, char* argv[])
 	OpenCLMgr mgr;
 
 	// Initial input,output for the host and create memory objects for the kernel
-	int size = 257;
+	int size = 1000;
 	cl_int* input = new cl_int[size];
 	cl_int* output = new cl_int[size];
 
-	for (int i = 0; i < size; i++) input[i] = 1;
+	for (int i = 0; i < size; i++) input[i] = 2;
 
 	cl_int status;
 	int clsize = 256;
@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
 	
 
 	// call function
-	praefixsumme_own(input_buffer_a, output_buffer_b_e, new_size, mgr);
+	praefixsumme_own(input_buffer_a, output_buffer_b_e, size, mgr);
 
 	cl_int* final = new cl_int[new_size];
 
