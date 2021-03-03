@@ -1,10 +1,10 @@
 /**********************************************************************
-Copyright ©2013 Advanced Micro Devices, Inc. All rights reserved.
+Copyright Â©2013 Advanced Micro Devices, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
-•	Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-•	Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or
+â€¢	Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+â€¢	Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or
  other materials provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -29,7 +29,7 @@ using namespace std;
 
 #include "OpenCLMgr.h"
 
-constexpr cl_int zeroInt = 4;
+constexpr cl_int zeroInt = 0;	// Used to fill up buffer
 
 
 // size of arrays must be exactly 256
@@ -75,32 +75,18 @@ int praefixsumme(cl_int *input, cl_int *output, int size, OpenCLMgr& mgr)
 
 
 // eigener code
-int praefixsumme_own(cl_int* input, cl_int* output, int size, OpenCLMgr& mgr)
+int praefixsumme_own(cl_mem* input_buffer_a, cl_mem* output_buffer_b_e, int size, OpenCLMgr& mgr)
 {
 	cl_int status;
 
-	int clsize = 256;
-
-
-	// größe für gesamten Inputarray berechnen, muss Vielfaches von 256 sein
-	int new_size = (size + 255) / clsize * clsize;
-
-	// inputBuffer erstellen
-	cl_mem inputBuffer = clCreateBuffer(mgr.context, CL_MEM_READ_ONLY, new_size * sizeof(cl_int), NULL, NULL);
-
-	// inputBuffer mit input füllen
-	status = clEnqueueWriteBuffer(mgr.commandQueue, inputBuffer, CL_TRUE, 0, size * sizeof(cl_int), input, 0, NULL, NULL);
-	// mit nullen auffüllen
-	status = clEnqueueFillBuffer(mgr.commandQueue, inputBuffer, &zeroInt, sizeof(cl_int), size * sizeof(cl_int), (new_size - size) * sizeof(cl_int), 0, NULL, NULL); 
-	
-	
-	// outputBuffer erstellen
-	cl_mem outputBuffer = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, new_size * sizeof(cl_int), NULL, NULL);
+	// Create new buffer for blocksums and blocksum prefixes
+	cl_mem blocksum_buffer_c = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, size / 256 * sizeof(cl_int), NULL, NULL);
+	cl_mem helper_buffer_d = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, size / 256 * sizeof(cl_int), NULL, NULL);
 
 	// Set kernel arguments.
-	status = clSetKernelArg(mgr.praefixsumme256_kernel, 0, sizeof(cl_mem), (void*)&inputBuffer);
+	status = clSetKernelArg(mgr.praefixsumme256_kernel, 0, sizeof(cl_mem), (void*)&input_buffer_a);
 	CHECK_SUCCESS("Error: setting kernel argument 1!")
-		status = clSetKernelArg(mgr.praefixsumme256_kernel, 1, sizeof(cl_mem), (void*)&outputBuffer);
+	status = clSetKernelArg(mgr.praefixsumme256_kernel, 1, sizeof(cl_mem), (void*)&output_buffer_b_e);
 	CHECK_SUCCESS("Error: setting kernel argument 2!")
 
 	// Run the kernel.
@@ -109,6 +95,8 @@ int praefixsumme_own(cl_int* input, cl_int* output, int size, OpenCLMgr& mgr)
 	status = clEnqueueNDRangeKernel(mgr.commandQueue, mgr.praefixsumme256_kernel, 1, NULL, global_work_size, local_work_size, 0, NULL, NULL);
 	CHECK_SUCCESS("Error: enqueuing kernel!")
 
+
+	
 	// get resulting array
 	status = clEnqueueReadBuffer(mgr.commandQueue, outputBuffer, CL_TRUE, 0, clsize * sizeof(cl_int), output, 0, NULL, NULL);
 	CHECK_SUCCESS("Error: reading buffer!")
@@ -127,17 +115,32 @@ int main(int argc, char* argv[])
 	OpenCLMgr mgr;
 
 	// Initial input,output for the host and create memory objects for the kernel
-	int size = 250;
+	int size = 25000;
 	cl_int* input = new cl_int[size];
-	cl_int* output = new cl_int[256];
+	cl_int* output = new cl_int[size];
 
-	for (int i = 0; i < size; i++)
-		input[i] = 1;
+	for (int i = 0; i < size; i++) input[i] = 1;
+
+	cl_int status;
+	int clsize = 256;
+
+	// grÃ¶ÃŸe fÃ¼r gesamten Inputarray berechnen, muss Vielfaches von 256 sein
+	int new_size = (size + 255) / clsize * clsize;
+
+	// inputBuffer erstellen
+	cl_mem input_buffer_a = clCreateBuffer(mgr.context, CL_MEM_READ_ONLY, new_size * sizeof(cl_int), NULL, NULL);
+
+	// inputBuffer mit input fÃ¼llen
+	status = clEnqueueWriteBuffer(mgr.commandQueue, inputBuffer, CL_TRUE, 0, size * sizeof(cl_int), input, 0, NULL, NULL);
+	// mit nullen auffÃ¼llen
+	status = clEnqueueFillBuffer(mgr.commandQueue, inputBuffer, &zeroInt, sizeof(cl_int), size * sizeof(cl_int), (new_size - size) * sizeof(cl_int), 0, NULL, NULL);
+
+	// outputBuffer erstellen
+	cl_mem output_buffer_b_e = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, new_size * sizeof(cl_int), NULL, NULL);
+	
 
 	// call function
-	praefixsumme_own(input, output, size, mgr);
-
-	std::cout << output[251];  // test ob buffer fill läuft
+	praefixsumme_own(&inputBuffer, &outputBuffer, new_size, mgr);
 
 	delete[] input;
 	delete[] output;
