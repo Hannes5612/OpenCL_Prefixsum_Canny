@@ -1,0 +1,8 @@
+﻿  ImageFX.cpp
+d:\daten\fh\vorlesungen\massiveparalleleprogrammierung\beispiele\_poolraumws19\imagefx\imagefx\imagefx.h(163): warning C4018: "<": Konflikt zwischen "signed" und "unsigned"
+d:\daten\fh\vorlesungen\massiveparalleleprogrammierung\beispiele\_poolraumws19\imagefx\imagefx\imagefx.h(212): warning C4018: "<": Konflikt zwischen "signed" und "unsigned"
+d:\daten\fh\vorlesungen\massiveparalleleprogrammierung\beispiele\_poolraumws19\imagefx\imagefx\imagefx.h(246): warning C4018: "<": Konflikt zwischen "signed" und "unsigned"
+d:\daten\fh\vorlesungen\massiveparalleleprogrammierung\beispiele\_poolraumws19\imagefx\imagefx\imagefx.cpp(114): warning C4838: Konvertierung von "int" zu "::size_t" erfordert eine einschränkende Konvertierung
+ImageFX.obj : warning LNK4075: /EDITANDCONTINUE wird aufgrund der Angabe von /INCREMENTAL:NO ignoriert.
+  ImageFX.vcxproj -> D:\Daten\FH\Vorlesungen\MassiveParalleleProgrammierung\Beispiele\_PoolraumWS19\ImageFX\Debug\ImageFX.exe
+  ImageFX.vcxproj -> D:\Daten\FH\Vorlesungen\MassiveParalleleProgrammierung\Beispiele\_PoolraumWS19\ImageFX\Debug\ImageFX.pdb (Partial PDB)
