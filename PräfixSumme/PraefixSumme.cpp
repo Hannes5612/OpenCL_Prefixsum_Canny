@@ -31,49 +31,6 @@ using namespace std;
 
 constexpr cl_int zeroInt = 0;	// Used to fill up buffer
 
-
-// size of arrays must be exactly 256
-int praefixsumme(cl_int *input, cl_int *output, int size, OpenCLMgr& mgr)
-{
-	cl_int status;
-
-	int clsize = 256;
-
-	// create OpenClinput buffer
-	cl_mem inputBuffer = clCreateBuffer(mgr.context, CL_MEM_READ_ONLY, clsize * sizeof(cl_int),NULL, NULL);
-	status = clEnqueueWriteBuffer(mgr.commandQueue, inputBuffer, CL_TRUE, 0, clsize * sizeof(cl_int), input, 0, NULL, NULL);
-	CHECK_SUCCESS("Error: writing buffer!")
-
-	// create OpenCl buffer for output
-	cl_mem outputBuffer = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, clsize * sizeof(cl_int), NULL, NULL);
-
-	// Set kernel arguments.
-	status = clSetKernelArg(mgr.praefixsumme256_kernel, 0, sizeof(cl_mem), (void *)&inputBuffer);
-	CHECK_SUCCESS("Error: setting kernel argument 1!")
-	status = clSetKernelArg(mgr.praefixsumme256_kernel, 1, sizeof(cl_mem), (void *)&outputBuffer);
-	CHECK_SUCCESS("Error: setting kernel argument 2!")
-
-	// Run the kernel.
-	size_t global_work_size[1] = { clsize };
-	size_t local_work_size[1] = { clsize };
-	status = clEnqueueNDRangeKernel(mgr.commandQueue, mgr.praefixsumme256_kernel, 1, NULL, global_work_size, local_work_size, 0, NULL, NULL);
-	CHECK_SUCCESS("Error: enqueuing kernel!")
-
-	// get resulting array
-	status = clEnqueueReadBuffer(mgr.commandQueue, outputBuffer, CL_TRUE, 0, clsize * sizeof(cl_int), output, 0, NULL, NULL);
-	CHECK_SUCCESS("Error: reading buffer!")
-
-	// release buffers
-	status = clReleaseMemObject(inputBuffer);		
-	CHECK_SUCCESS("Error: releasing buffer!")
-	status = clReleaseMemObject(outputBuffer);
-	CHECK_SUCCESS("Error: releasing buffer!")
-
-	return SUCCESS;
-}
-
-
-
 // eigener code
 int praefixsumme_own(cl_mem input_buffer_a, cl_mem output_buffer_b_e, int size, OpenCLMgr& mgr)
 {
@@ -81,38 +38,45 @@ int praefixsumme_own(cl_mem input_buffer_a, cl_mem output_buffer_b_e, int size, 
 	cl_int status;
 	int workgroup_size = 256;
 
+	// Create new buffer for blocksums and blocksum prefixes
+	cl_mem blocksum_buffer_c = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, size / 256 * sizeof(cl_int), NULL, NULL);
+
 	// Set kernel arguments.
 	status = clSetKernelArg(mgr.praefixsumme256_kernel, 0, sizeof(cl_mem), (void*)&input_buffer_a);
-	CHECK_SUCCESS("Error: setting kernel argument 1!")
+	CHECK_SUCCESS("Error: setting kernel1 argument 1!")
 	status = clSetKernelArg(mgr.praefixsumme256_kernel, 1, sizeof(cl_mem), (void*)&output_buffer_b_e);
-	CHECK_SUCCESS("Error: setting kernel argument 2!")
+	CHECK_SUCCESS("Error: setting kernel1 argument 2!")
+	status = clSetKernelArg(mgr.praefixsumme256_kernel, 2, sizeof(cl_mem), (void*)&blocksum_buffer_c);
+	CHECK_SUCCESS("Error: setting kernel1 argument 3!")
 
 	// Run the kernel.
 	size_t global_work_size[1] = { workgroup_size };
 	size_t local_work_size[1] = { workgroup_size };
 	status = clEnqueueNDRangeKernel(mgr.commandQueue, mgr.praefixsumme256_kernel, 1, NULL, global_work_size, local_work_size, 0, NULL, NULL);
-	CHECK_SUCCESS("Error: enqueuing kernel!")
+	CHECK_SUCCESS(status)
 
 
 
 	// recursive call to calculate prefix sums in blocksums_buffer_c, if size > 256
 	if (size > 256) {
-		// Create new buffer for blocksums and blocksum prefixes
-		cl_mem blocksum_buffer_c = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, size / 256 * sizeof(cl_int), NULL, NULL);
-		cl_mem helper_buffer_d = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, size / 256 * sizeof(cl_int), NULL, NULL);
+		cl_int new_size = (size + (256 - (size % 256)));
+		// Create Buffer D
+		cl_mem helper_buffer_d = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, new_size / 256 * sizeof(cl_int), NULL, NULL);
+
+		// TODO: fill c with 0
 
 		//recursive call
-		praefixsumme_own(blocksum_buffer_c, helper_buffer_d, size / 256 * sizeof(cl_int), mgr);
+		praefixsumme_own(blocksum_buffer_c, helper_buffer_d, new_size / 256 * sizeof(cl_int), mgr);
 
 		// use second kernel to add blockwise prefix sums and blocksums
-		status = clSetKernelArg(mgr.final_prefixsum, 0, sizeof(cl_mem), (void*)&blocksum_buffer_c);
-		CHECK_SUCCESS("Error: setting kernel argument 1!")
+		status = clSetKernelArg(mgr.final_prefixsum, 0, sizeof(cl_mem), (void*)&output_buffer_b_e);
+		CHECK_SUCCESS("Error: setting kernel2 argument 1!")
 		status = clSetKernelArg(mgr.final_prefixsum, 1, sizeof(cl_mem), (void*)&helper_buffer_d);
-		CHECK_SUCCESS("Error: setting kernel argument 2!")
+		CHECK_SUCCESS("Error: setting kernel2 argument 2!")
 
 
 		// Run the final kernel.
-		size_t global_work_size[1] = { size };
+		size_t global_work_size[1] = { (size + ( 256 - (size % 256))) };
 		size_t local_work_size[1] = { workgroup_size };
 		status = clEnqueueNDRangeKernel(mgr.commandQueue, mgr.final_prefixsum, 1, NULL, global_work_size, local_work_size, 0, NULL, NULL);
 		CHECK_SUCCESS("Error: enqueuing the final kernel!")
@@ -124,7 +88,7 @@ int praefixsumme_own(cl_mem input_buffer_a, cl_mem output_buffer_b_e, int size, 
 		CHECK_SUCCESS("Error: releasing buffer!")
 	}
 
-
+	std::cout << status;
 	return SUCCESS;
 }
 
@@ -133,7 +97,7 @@ int main(int argc, char* argv[])
 	OpenCLMgr mgr;
 
 	// Initial input,output for the host and create memory objects for the kernel
-	int size = 25000;
+	int size = 257;
 	cl_int* input = new cl_int[size];
 	cl_int* output = new cl_int[size];
 
@@ -143,7 +107,7 @@ int main(int argc, char* argv[])
 	int clsize = 256;
 
 	// größe für gesamten Inputarray berechnen, muss Vielfaches von 256 sein
-	int new_size = (size + 255) / clsize * clsize;
+	int new_size = (size + (256 - (size % 256)));
 
 	// inputBuffer erstellen
 	cl_mem input_buffer_a = clCreateBuffer(mgr.context, CL_MEM_READ_ONLY, new_size * sizeof(cl_int), NULL, NULL);
@@ -160,10 +124,17 @@ int main(int argc, char* argv[])
 	// call function
 	praefixsumme_own(input_buffer_a, output_buffer_b_e, new_size, mgr);
 
+	cl_int* final = new cl_int[new_size];
 
 	// get resulting array
-	status = clEnqueueReadBuffer(mgr.commandQueue, output_buffer_b_e, CL_TRUE, 0, clsize * sizeof(cl_int), output, 0, NULL, NULL);
+	status = clEnqueueReadBuffer(mgr.commandQueue, output_buffer_b_e, CL_TRUE, 0, new_size * sizeof(cl_int), final, 0, NULL, NULL);
+	std::cout << status;
 	CHECK_SUCCESS("Error: reading buffer!")
+
+	std::cout << "In Main: Finalarray" << "\n";
+	for (int i = 0; i < new_size; i++) {
+		std::cout << "Stelle " << i << ": " << final[i] << "\n";
+	}
 
 
 	// release buffers

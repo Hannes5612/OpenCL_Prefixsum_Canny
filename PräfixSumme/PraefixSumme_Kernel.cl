@@ -1,4 +1,4 @@
-__kernel praefixsumme256_kernel(__global int* input_buffer_a, __global int* output_buffer_b, __global int* blocksum_buffer_c)
+__kernel void praefixsumme256_kernel(__global int* input_buffer_a, __global int* output_buffer_b, __global int* blocksum_buffer_c)
 {
     int gid = get_global_id(0);
     int lid = get_local_id(0);
@@ -48,7 +48,7 @@ __kernel praefixsumme256_kernel(__global int* input_buffer_a, __global int* outp
     noItemsThatWork = 1;    // Limit to select indices
     spacing = 128;          // Space between the two used indices
 
-    for (d = 0; d < 8; d++) // 8, since log_2(256)
+    for (int d = 0; d < 8; d++) // 8, since log_2(256)
     {
         if (lid < noItemsThatWork) {
             index1 = lid * (spacing << 1) + spacing - 1;    // Calc index 1
