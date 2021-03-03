@@ -19,6 +19,7 @@ OpenCLMgr::OpenCLMgr()
 	commandQueue = 0;
 	program = 0;
 	praefixsumme256_kernel = 0;
+	final_prefixsum = 0;
 
 	valid = (init()==SUCCESS);
 }
@@ -30,6 +31,7 @@ OpenCLMgr::~OpenCLMgr()
 
 	//Release kernels
 	if (praefixsumme256_kernel) status = clReleaseKernel(praefixsumme256_kernel);
+	if (final_prefixsum) status = clReleaseKernel(final_prefixsum);
 
 	//Release the program object.
 	if (program) status = clReleaseProgram(program);
@@ -150,6 +152,10 @@ cl_int OpenCLMgr::init()
 	// Create kernel objects 
 	praefixsumme256_kernel = clCreateKernel(program,"praefixsumme256_kernel", &status);
 	CHECK_SUCCESS("Error: creating praefixsumme256_kernel")
+	
+	final_prefixsum = clCreateKernel(program, "final_prefixsum", &status);
+	CHECK_SUCCESS("Error: creating final_prefixsum")
+		
 
 	if (devices != NULL)
 	{

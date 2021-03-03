@@ -75,13 +75,11 @@ int praefixsumme(cl_int *input, cl_int *output, int size, OpenCLMgr& mgr)
 
 
 // eigener code
-int praefixsumme_own(cl_mem* input_buffer_a, cl_mem* output_buffer_b_e, int size, OpenCLMgr& mgr)
+int praefixsumme_own(cl_mem input_buffer_a, cl_mem output_buffer_b_e, int size, OpenCLMgr& mgr)
 {
+	
 	cl_int status;
-
-	// Create new buffer for blocksums and blocksum prefixes
-	cl_mem blocksum_buffer_c = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, size / 256 * sizeof(cl_int), NULL, NULL);
-	cl_mem helper_buffer_d = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, size / 256 * sizeof(cl_int), NULL, NULL);
+	int workgroup_size = 256;
 
 	// Set kernel arguments.
 	status = clSetKernelArg(mgr.praefixsumme256_kernel, 0, sizeof(cl_mem), (void*)&input_buffer_a);
@@ -90,22 +88,42 @@ int praefixsumme_own(cl_mem* input_buffer_a, cl_mem* output_buffer_b_e, int size
 	CHECK_SUCCESS("Error: setting kernel argument 2!")
 
 	// Run the kernel.
-	size_t global_work_size[1] = { clsize };
-	size_t local_work_size[1] = { clsize };
+	size_t global_work_size[1] = { workgroup_size };
+	size_t local_work_size[1] = { workgroup_size };
 	status = clEnqueueNDRangeKernel(mgr.commandQueue, mgr.praefixsumme256_kernel, 1, NULL, global_work_size, local_work_size, 0, NULL, NULL);
 	CHECK_SUCCESS("Error: enqueuing kernel!")
 
 
-	
-	// get resulting array
-	status = clEnqueueReadBuffer(mgr.commandQueue, outputBuffer, CL_TRUE, 0, clsize * sizeof(cl_int), output, 0, NULL, NULL);
-	CHECK_SUCCESS("Error: reading buffer!")
 
-	// release buffers
-	status = clReleaseMemObject(inputBuffer);
-	CHECK_SUCCESS("Error: releasing buffer!")
-	status = clReleaseMemObject(outputBuffer);
-	CHECK_SUCCESS("Error: releasing buffer!")
+	// recursive call to calculate prefix sums in blocksums_buffer_c, if size > 256
+	if (size > 256) {
+		// Create new buffer for blocksums and blocksum prefixes
+		cl_mem blocksum_buffer_c = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, size / 256 * sizeof(cl_int), NULL, NULL);
+		cl_mem helper_buffer_d = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, size / 256 * sizeof(cl_int), NULL, NULL);
+
+		//recursive call
+		praefixsumme_own(blocksum_buffer_c, helper_buffer_d, size / 256 * sizeof(cl_int), mgr);
+
+		// use second kernel to add blockwise prefix sums and blocksums
+		status = clSetKernelArg(mgr.final_prefixsum, 0, sizeof(cl_mem), (void*)&blocksum_buffer_c);
+		CHECK_SUCCESS("Error: setting kernel argument 1!")
+		status = clSetKernelArg(mgr.final_prefixsum, 1, sizeof(cl_mem), (void*)&helper_buffer_d);
+		CHECK_SUCCESS("Error: setting kernel argument 2!")
+
+
+		// Run the final kernel.
+		size_t global_work_size[1] = { size };
+		size_t local_work_size[1] = { workgroup_size };
+		status = clEnqueueNDRangeKernel(mgr.commandQueue, mgr.final_prefixsum, 1, NULL, global_work_size, local_work_size, 0, NULL, NULL);
+		CHECK_SUCCESS("Error: enqueuing the final kernel!")
+
+		// release buffers
+		status = clReleaseMemObject(blocksum_buffer_c);
+		CHECK_SUCCESS("Error: releasing buffer!")
+		status = clReleaseMemObject(helper_buffer_d);
+		CHECK_SUCCESS("Error: releasing buffer!")
+	}
+
 
 	return SUCCESS;
 }
@@ -131,16 +149,30 @@ int main(int argc, char* argv[])
 	cl_mem input_buffer_a = clCreateBuffer(mgr.context, CL_MEM_READ_ONLY, new_size * sizeof(cl_int), NULL, NULL);
 
 	// inputBuffer mit input füllen
-	status = clEnqueueWriteBuffer(mgr.commandQueue, inputBuffer, CL_TRUE, 0, size * sizeof(cl_int), input, 0, NULL, NULL);
+	status = clEnqueueWriteBuffer(mgr.commandQueue, input_buffer_a, CL_TRUE, 0, size * sizeof(cl_int), input, 0, NULL, NULL);
 	// mit nullen auffüllen
-	status = clEnqueueFillBuffer(mgr.commandQueue, inputBuffer, &zeroInt, sizeof(cl_int), size * sizeof(cl_int), (new_size - size) * sizeof(cl_int), 0, NULL, NULL);
+	status = clEnqueueFillBuffer(mgr.commandQueue, input_buffer_a, &zeroInt, sizeof(cl_int), size * sizeof(cl_int), (new_size - size) * sizeof(cl_int), 0, NULL, NULL);
 
 	// outputBuffer erstellen
 	cl_mem output_buffer_b_e = clCreateBuffer(mgr.context, CL_MEM_READ_WRITE, new_size * sizeof(cl_int), NULL, NULL);
 	
 
 	// call function
-	praefixsumme_own(&inputBuffer, &outputBuffer, new_size, mgr);
+	praefixsumme_own(input_buffer_a, output_buffer_b_e, new_size, mgr);
+
+
+	// get resulting array
+	status = clEnqueueReadBuffer(mgr.commandQueue, output_buffer_b_e, CL_TRUE, 0, clsize * sizeof(cl_int), output, 0, NULL, NULL);
+	CHECK_SUCCESS("Error: reading buffer!")
+
+
+	// release buffers
+	status = clReleaseMemObject(input_buffer_a);
+	CHECK_SUCCESS("Error: releasing buffer!")
+	status = clReleaseMemObject(output_buffer_b_e);
+	CHECK_SUCCESS("Error: releasing buffer!")
+
+
 
 	delete[] input;
 	delete[] output;

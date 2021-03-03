@@ -32,6 +32,7 @@ public:
 	cl_program program;
 	
 	cl_kernel praefixsumme256_kernel;	// array size exactly 256. Only one workgroup uses
+	cl_kernel final_prefixsum;
 
 private:
 	static int convertToString(const char *filename, std::string& s);
