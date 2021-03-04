@@ -43,7 +43,7 @@ int convertToString(const char *filename, std::string& s) {
 // ==== filenames for UI ====
 // ==========================
 
-std::string inputFilename = "me_young.png";
+std::string inputFilename = "tore.png";
 std::string outputFilename = "ImageFX.bmp";
 
 struct ImgFXWindow : Window {
@@ -105,6 +105,32 @@ struct ImgFXWindow : Window {
 		saveBMP(outputFilename);
 	}
 
+
+    virtual cl_mem applyFilter(cl_mem in_buffer,  cl_float* FilterMat, cl_int dim, cl_int flag){
+        size_t gdims[] = { image->w, image->h };
+        
+        cl_mem out_buffer = clCreateBuffer(mgr->context, CL_MEM_WRITE_ONLY, sizeof(int32_t)*image->w*image->h, NULL, NULL);
+        cl_mem filtermem = clCreateBuffer(mgr->context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_int) * dim * dim, FilterMat, NULL);
+
+        cl_int status = 0;
+        status = clSetKernelArg(procKernel, 0, sizeof(inmem), &in_buffer);
+		status |= clSetKernelArg(procKernel, 1, sizeof(out_buffer), &out_buffer);
+		status |= clSetKernelArg(procKernel, 2, sizeof(cl_int), &image->w);
+		status |= clSetKernelArg(procKernel, 3, sizeof(cl_int), &image->h);
+        status |= clSetKernelArg(procKernel, 4, sizeof(cl_int), &dim);
+        status |= clSetKernelArg(procKernel, 5, sizeof(filtermem), &filtermem);
+        status |= clSetKernelArg(procKernel, 6, sizeof(cl_int), &flag);
+
+        if (status)
+			throw "set kernel arg";
+        
+        status |= clEnqueueNDRangeKernel(mgr->commandQueue, procKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
+        std::cout << status;
+
+        return out_buffer;
+    }
+
+
     virtual void onApply() {
 		// ==================================================
 		// ==== called when clicking the "apply" button ====
@@ -112,31 +138,39 @@ struct ImgFXWindow : Window {
         if (!outbuf || !image) return;
 
         size_t gdims[] = { image->w, image->h };
-        std::cout << gdims[0] << '\n';
-        std::cout << gdims[1] << '\n';
 
 		cl_int dim = 3;
+        cl_int flag = 0; // 1 if absolute values wanted, 0 if scaled values wanted
 
         // cl_float FilterMat[9] = { -1, -1, -1, -1, 8, -1, -1, -1, -1 };
-        // cl_float FilterMat[9] = { 0.0625, 0.125, 0.0625, 0.125, 0.25, 0.125, 0.0625, 0.125, 0.0625 };    // Blurr
-         cl_float FilterMat[9] = { 0, -1, 0, -1, 5, -1, 0, -1, 0 };                                       // Sharpen
-        cl_mem filtermem = clCreateBuffer(mgr->context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_int)*dim*dim, FilterMat, NULL);
+        // cl_float FilterMat[9] = { 0, 0, 0, 0, 1, 0, 0, 0, 0 };
+        cl_float FilterMat[9] = { 0.0625, 0.125, 0.0625, 0.125, 0.25, 0.125, 0.0625, 0.125, 0.0625 };    // Blurr
+        // cl_float FilterMat[9] = { 0, -1, 0, -1, 5, -1, 0, -1, 0 };                                       // Sharpen
+        // cl_mem filtermem = clCreateBuffer(mgr->context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_int) * dim * dim, FilterMat, NULL);
 
-        cl_int status=0;
-		status = clSetKernelArg(procKernel, 0, sizeof(inmem), &inmem);
-		status |= clSetKernelArg(procKernel, 1, sizeof(outmem), &outmem);
-		status |= clSetKernelArg(procKernel, 2, sizeof(cl_int), &image->w);
-		status |= clSetKernelArg(procKernel, 3, sizeof(cl_int), &image->h);
-        status |= clSetKernelArg(procKernel, 4, sizeof(cl_int), &dim); 0.125
-		// TODO 
+        cl_int status = 0;
+		//status = clSetKernelArg(procKernel, 0, sizeof(inmem), &inmem);
+		//status |= clSetKernelArg(procKernel, 1, sizeof(outmem), &outmem);
+		//status |= clSetKernelArg(procKernel, 2, sizeof(cl_int), &image->w);
+		//status |= clSetKernelArg(procKernel, 3, sizeof(cl_int), &image->h);
+        //status |= clSetKernelArg(procKernel, 4, sizeof(cl_int), &dim);
+        //status |= clSetKernelArg(procKernel, 5, sizeof(filtermem), &filtermem);
+        //status |= clSetKernelArg(procKernel, 6, sizeof(cl_int), &flag);
+		
 
+		//if (status)
+		//	throw "set kernel arg";
+		//status |= clEnqueueNDRangeKernel(mgr->commandQueue, procKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
 
+        cl_mem gaussMem = applyFilter(inmem, FilterMat, dim, flag);
 
-		if (status)
-			throw "set kernel arg";
-		status |= clEnqueueNDRangeKernel(mgr->commandQueue, procKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
-        status |= clEnqueueReadBuffer(mgr->commandQueue, outmem, CL_TRUE, 0, sizeof(*outbuf)*image->w*image->h, outbuf, 0, NULL, NULL);
+        status = clEnqueueReadBuffer(mgr->commandQueue, gaussMem, CL_TRUE, 0, sizeof(*outbuf)*image->w*image->h, outbuf, 0, NULL, NULL);
         if (status) throw "enqueue commands";
+
+
+        // creating bufer for greyscale kernel
+        // cl_mem filtermem = clCreateBuffer(mgr->context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_int)*dim*dim, FilterMat, NULL);
+
     }
 };
 
