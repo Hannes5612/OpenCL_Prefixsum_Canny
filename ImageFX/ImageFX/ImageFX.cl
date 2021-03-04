@@ -9,7 +9,7 @@
 #define LY get_local_id(1)
 
 
-__kernel void imgfx(__global uchar4 *in, __global uchar4 *out, int width, int height) { 
+__kernel void imgfx(__global uchar4 *in, __global uchar4 *out, int width, int height, int dim, __global float* filterMat, int flag) { 
 
 	// Die Pixel sind vom Datentyp uchar4. Ein solcher Vektor bestehend aus 4 uchar-Werten (rot, grün, blau, alpha)
 	// kann mit einem einzelnen uchar multipliziert werden, aber nicht mit anderen Datentypen, wie z.B. einem float
@@ -24,6 +24,31 @@ __kernel void imgfx(__global uchar4 *in, __global uchar4 *out, int width, int he
 	// out[0] = convert_uchar4(value);
 
 	// TODO
+
+	// Radius of the filter matrix
+	int offset = (dim - 1) / 2;
+
+	// Pixel to calculate
+	float4 calculated_pixel = (float4)(0.0f, 0.0f, 0.0f, 0.0f);
+
+	//
+	int filter_index = 0;
 	
-	out[GY*GW + GX] = (uchar4)(0,0,0,0);
+	// Go through filter matrix indices
+	for (int x_axis = GX - offset; x_axis <= GX + offset; x_axis++) {				// go through horizontally
+		for (int y_axis = GY - offset; y_axis <= GY + offset; y_axis++) {			// go through vertically
+			if (x_axis < 0 || y_axis < 0 || x_axis >= width || y_axis >= height) {	// out of image borders
+				calculated_pixel += (float4)(1.0f, 1.0f, 1.0f, 1.0f);
+			}
+			else {
+				int one_dim_ind = y_axis * width + x_axis;
+				float4 pixel = convert_float4(in[one_dim_ind]);
+				calculated_pixel += (filterMat[filter_index] * pixel);
+			}
+
+			filter_index++;
+		}
+	}
+
+	out[GY*GW + GX] = convert_uchar4(calculated_pixel);
 }

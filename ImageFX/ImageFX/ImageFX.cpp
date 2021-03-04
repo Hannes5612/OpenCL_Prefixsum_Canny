@@ -43,7 +43,7 @@ int convertToString(const char *filename, std::string& s) {
 // ==== filenames for UI ====
 // ==========================
 
-std::string inputFilename = "Banane.png";
+std::string inputFilename = "me_young.png";
 std::string outputFilename = "ImageFX.bmp";
 
 struct ImgFXWindow : Window {
@@ -112,17 +112,22 @@ struct ImgFXWindow : Window {
         if (!outbuf || !image) return;
 
         size_t gdims[] = { image->w, image->h };
+        std::cout << gdims[0] << '\n';
+        std::cout << gdims[1] << '\n';
 
 		cl_int dim = 3;
-		//cl_float FilterMat[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
-		cl_float FilterMat[9] = { -1, -1, -1, -1, 8, -1, -1, -1, -1 };
+
+        // cl_float FilterMat[9] = { -1, -1, -1, -1, 8, -1, -1, -1, -1 };
+        // cl_float FilterMat[9] = { 0.0625, 0.125, 0.0625, 0.125, 0.25, 0.125, 0.0625, 0.125, 0.0625 };    // Blurr
+         cl_float FilterMat[9] = { 0, -1, 0, -1, 5, -1, 0, -1, 0 };                                       // Sharpen
+        cl_mem filtermem = clCreateBuffer(mgr->context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_int)*dim*dim, FilterMat, NULL);
 
         cl_int status=0;
 		status = clSetKernelArg(procKernel, 0, sizeof(inmem), &inmem);
 		status |= clSetKernelArg(procKernel, 1, sizeof(outmem), &outmem);
 		status |= clSetKernelArg(procKernel, 2, sizeof(cl_int), &image->w);
 		status |= clSetKernelArg(procKernel, 3, sizeof(cl_int), &image->h);
-
+        status |= clSetKernelArg(procKernel, 4, sizeof(cl_int), &dim); 0.125
 		// TODO 
 
 
