@@ -22,6 +22,7 @@ public:
 	cl_program program;
 	
 	cl_kernel procKernel;
+	cl_kernel greyKernel;
 
 private:
 	static int convertToString(const char *filename, std::string& s);
