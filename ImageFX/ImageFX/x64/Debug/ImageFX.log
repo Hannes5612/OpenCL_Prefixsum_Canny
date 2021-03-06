@@ -1,0 +1,25 @@
+﻿ImageFX.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/INCREMENTAL:NO' specification
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_RWFromFile referenced in function "public: void __cdecl Window::saveBMP(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> >)" (?saveBMP@Window@@QEAAXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_SetVideoMode referenced in function "public: __cdecl Window::Window(void)" (??0Window@@QEAA@XZ)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_Flip referenced in function "public: void __cdecl Window::run(void)" (?run@Window@@QEAAXXZ)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_CreateRGBSurfaceFrom referenced in function "public: void __cdecl Window::useBuffer(int *,int,int)" (?useBuffer@Window@@QEAAXPEAHHH@Z)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_FreeSurface referenced in function "public: __cdecl Window::~Window(void)" (??1Window@@QEAA@XZ)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_SaveBMP_RW referenced in function "public: void __cdecl Window::saveBMP(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> >)" (?saveBMP@Window@@QEAAXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_ConvertSurface referenced in function "struct SDL_Surface * __cdecl loadImageRGB32(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> >)" (?loadImageRGB32@@YAPEAUSDL_Surface@@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_UpperBlit referenced in function "public: virtual void __cdecl Button::draw(void)" (?draw@Button@@UEAAXXZ)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_FillRect referenced in function "public: virtual void __cdecl Button::draw(void)" (?draw@Button@@UEAAXXZ)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_WaitEvent referenced in function "public: void __cdecl Window::run(void)" (?run@Window@@QEAAXXZ)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_GetTicks referenced in function "public: void __cdecl Window::run(void)" (?run@Window@@QEAAXXZ)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_Init referenced in function "public: __cdecl Window::Window(void)" (??0Window@@QEAA@XZ)
+ImageFX.obj : error LNK2019: unresolved external symbol SDL_Quit referenced in function "public: __cdecl Window::~Window(void)" (??1Window@@QEAA@XZ)
+ImageFX.obj : error LNK2019: unresolved external symbol TTF_Init referenced in function "public: __cdecl Window::Window(void)" (??0Window@@QEAA@XZ)
+ImageFX.obj : error LNK2019: unresolved external symbol TTF_OpenFont referenced in function "public: __cdecl Window::Window(void)" (??0Window@@QEAA@XZ)
+ImageFX.obj : error LNK2019: unresolved external symbol TTF_RenderText_Blended referenced in function "public: __cdecl Image::Image(struct SDL_Surface *)" (??0Image@@QEAA@PEAUSDL_Surface@@@Z)
+ImageFX.obj : error LNK2019: unresolved external symbol __imp_zoomSurface referenced in function "public: virtual void __cdecl Image::draw(void)" (?draw@Image@@UEAAXXZ)
+ImageFX.obj : error LNK2019: unresolved external symbol IMG_Init referenced in function "public: __cdecl Window::Window(void)" (??0Window@@QEAA@XZ)
+ImageFX.obj : error LNK2019: unresolved external symbol IMG_Load referenced in function "struct SDL_Surface * __cdecl loadImageRGB32(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> >)" (?loadImageRGB32@@YAPEAUSDL_Surface@@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)
+SDL.lib : warning LNK4272: library machine type 'x86' conflicts with target machine type 'x64'
+SDL_gfx.lib : warning LNK4272: library machine type 'x86' conflicts with target machine type 'x64'
+SDL_image.lib : warning LNK4272: library machine type 'x86' conflicts with target machine type 'x64'
+SDL_ttf.lib : warning LNK4272: library machine type 'x86' conflicts with target machine type 'x64'
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\x64\Debug\ImageFX.exe : fatal error LNK1120: 19 unresolved externals
