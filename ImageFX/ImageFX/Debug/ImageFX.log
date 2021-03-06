@@ -1,8 +1,18 @@
 ﻿  ImageFX.cpp
-d:\daten\fh\vorlesungen\massiveparalleleprogrammierung\beispiele\_poolraumws19\imagefx\imagefx\imagefx.h(163): warning C4018: "<": Konflikt zwischen "signed" und "unsigned"
-d:\daten\fh\vorlesungen\massiveparalleleprogrammierung\beispiele\_poolraumws19\imagefx\imagefx\imagefx.h(212): warning C4018: "<": Konflikt zwischen "signed" und "unsigned"
-d:\daten\fh\vorlesungen\massiveparalleleprogrammierung\beispiele\_poolraumws19\imagefx\imagefx\imagefx.h(246): warning C4018: "<": Konflikt zwischen "signed" und "unsigned"
-d:\daten\fh\vorlesungen\massiveparalleleprogrammierung\beispiele\_poolraumws19\imagefx\imagefx\imagefx.cpp(114): warning C4838: Konvertierung von "int" zu "::size_t" erfordert eine einschränkende Konvertierung
-ImageFX.obj : warning LNK4075: /EDITANDCONTINUE wird aufgrund der Angabe von /INCREMENTAL:NO ignoriert.
-  ImageFX.vcxproj -> D:\Daten\FH\Vorlesungen\MassiveParalleleProgrammierung\Beispiele\_PoolraumWS19\ImageFX\Debug\ImageFX.exe
-  ImageFX.vcxproj -> D:\Daten\FH\Vorlesungen\MassiveParalleleProgrammierung\Beispiele\_PoolraumWS19\ImageFX\Debug\ImageFX.pdb (Partial PDB)
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.h(163,24): warning C4018: '<': signed/unsigned mismatch
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.h(212,32): warning C4018: '<': signed/unsigned mismatch
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.h(246,32): warning C4018: '<': signed/unsigned mismatch
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(119,33): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(119,43): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(145,33): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(145,43): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(166,33): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(166,43): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(182,33): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(182,43): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(198,33): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(198,43): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(215,33): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\ImageFX\ImageFX.cpp(215,43): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+ImageFX.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/INCREMENTAL:NO' specification
+  ImageFX.vcxproj -> D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\Debug\ImageFX.exe

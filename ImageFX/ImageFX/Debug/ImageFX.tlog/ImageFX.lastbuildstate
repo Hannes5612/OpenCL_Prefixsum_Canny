@@ -1,2 +1,2 @@
-#TargetFrameworkVersion=v4.0:PlatformToolSet=v141:EnableManagedIncrementalBuild=false:VCToolArchitecture=Native32Bit:WindowsTargetPlatformVersion=10.0.17763.0
-Debug|Win32|D:\Daten\FH\Vorlesungen\MassiveParalleleProgrammierung\Beispiele\_PoolraumWS19\ImageFX\|
+PlatformToolSet=v142:VCToolArchitecture=Native32Bit:VCToolsVersion=14.27.29110:TargetPlatformVersion=10.0.18362.0:
+Debug|Win32|D:\Cloud\HdM\WS20 - Semester 3\Programming Massively Parallel Processors (113544a)\pmpp_abgabe_ws20\ImageFX\|

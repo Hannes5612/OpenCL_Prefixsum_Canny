@@ -19,8 +19,11 @@ OpenCLMgr::OpenCLMgr()
 	context = 0;
 	commandQueue = 0;
 	program = 0;
-	procKernel = 0 ;
+	procKernel = 0;
 	greyKernel = 0;
+	absEdgeKernel = 0;
+	nmsKernel = 0;
+	ucharKernel = 0;
 
 	valid = (init() == SUCCESS);
 }
@@ -33,6 +36,9 @@ OpenCLMgr::~OpenCLMgr()
 	//Release kernels
 	if (procKernel) status = clReleaseKernel(procKernel);
 	if (greyKernel) status = clReleaseKernel(greyKernel);
+	if (absEdgeKernel) status = clReleaseKernel(absEdgeKernel);
+	if (nmsKernel) status = clReleaseKernel(nmsKernel);
+	if (ucharKernel) status = clReleaseKernel(ucharKernel);
 
 	//Release the program object.
 	if (program) status = clReleaseProgram(program);
@@ -158,7 +164,10 @@ cl_int OpenCLMgr::init()
 
 	// create kernels
 	greyKernel = clCreateKernel(program, "to_grey", NULL);
+	absEdgeKernel = clCreateKernel(program, "abs_edge", NULL);
+	nmsKernel = clCreateKernel(program, "nms", NULL);
 	procKernel = clCreateKernel(program, "imgfx", NULL);
+	ucharKernel = clCreateKernel(program, "to_uchar", NULL);
 
 	return status;
 }

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <algorithm>
 
 using namespace std;
 
@@ -43,13 +44,16 @@ int convertToString(const char *filename, std::string& s) {
 // ==== filenames for UI ====
 // ==========================
 
-std::string inputFilename = "tore.png";
+std::string inputFilename = "Banane.png";
 std::string outputFilename = "ImageFX.bmp";
 
 struct ImgFXWindow : Window {
     cl_mem inmem, outmem;
     cl_kernel procKernel;
     cl_kernel greyKernel;
+    cl_kernel absEdgeKernel;
+    cl_kernel nmsKernel;
+    cl_kernel ucharKernel;
 
     int32_t *outbuf;
     SDL_Surface *image;
@@ -64,6 +68,9 @@ struct ImgFXWindow : Window {
 
 		procKernel = mgr->procKernel;
         greyKernel = mgr->greyKernel;
+        absEdgeKernel = mgr->absEdgeKernel;
+        nmsKernel = mgr->nmsKernel;
+        ucharKernel = mgr->ucharKernel;
 
         onReset();
     }
@@ -110,12 +117,13 @@ struct ImgFXWindow : Window {
 
     virtual cl_mem applyFilter(cl_mem in_buffer,  cl_float* FilterMat, cl_int dim, cl_int flag){
         size_t gdims[] = { image->w, image->h };
-        
-        cl_mem out_buffer = clCreateBuffer(mgr->context, CL_MEM_WRITE_ONLY, sizeof(int32_t)*image->w*image->h, NULL, NULL);
+
+
+        cl_mem out_buffer = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float)*image->w*image->h, NULL, NULL);
         cl_mem filtermem = clCreateBuffer(mgr->context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_int) * dim * dim, FilterMat, NULL);
 
         cl_int status = 0;
-        status = clSetKernelArg(procKernel, 0, sizeof(inmem), &in_buffer);
+        status = clSetKernelArg(procKernel, 0, sizeof(in_buffer), &in_buffer);
 		status |= clSetKernelArg(procKernel, 1, sizeof(out_buffer), &out_buffer);
 		status |= clSetKernelArg(procKernel, 2, sizeof(cl_int), &image->w);
 		status |= clSetKernelArg(procKernel, 3, sizeof(cl_int), &image->h);
@@ -138,8 +146,8 @@ struct ImgFXWindow : Window {
         cl_int status = 0;
 
         // creating and setting parameters for grey_buffer kernel call
-        cl_mem greyMem = clCreateBuffer(mgr->context, CL_MEM_WRITE_ONLY, sizeof(int32_t) * image->w * image->h, NULL, NULL);
-        status = clSetKernelArg(greyKernel, 0, sizeof(inmem), &inmem);
+        cl_mem greyMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
+        status = clSetKernelArg(greyKernel, 0, sizeof(in_buffer), &in_buffer);
         status |= clSetKernelArg(greyKernel, 1, sizeof(greyMem), &greyMem);
 
         // starting the greyscale kernel
@@ -148,62 +156,130 @@ struct ImgFXWindow : Window {
         return greyMem;
     }
 
+    virtual cl_mem* applyAbsEdge(cl_mem xSobelMem, cl_mem ySobelMem) {
+        // Create Buffer for abs strengths and gradients
+        cl_mem* absEdgeMem = new cl_mem[2];
+        absEdgeMem[0] = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
+        absEdgeMem[1] = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
+
+        cl_int status = 0;
+        size_t gdims[] = { image->w, image->h };
+
+        status = clSetKernelArg(absEdgeKernel, 0, sizeof(xSobelMem), &xSobelMem);
+        status |= clSetKernelArg(absEdgeKernel, 1, sizeof(ySobelMem), &ySobelMem);
+        status |= clSetKernelArg(absEdgeKernel, 2, sizeof(absEdgeMem[0]), &absEdgeMem[0]);
+        status |= clSetKernelArg(absEdgeKernel, 3, sizeof(absEdgeMem[1]), &absEdgeMem[1]);
+
+        status = clEnqueueNDRangeKernel(mgr->commandQueue, absEdgeKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
+
+        return absEdgeMem;
+    }
+
+    virtual cl_mem applyNms(cl_mem* absEdgeMem) {
+        cl_mem nmsMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
+
+        cl_int status = 0;
+        size_t gdims[] = { image->w, image->h };
+
+
+        status = clSetKernelArg(nmsKernel, 0, sizeof(absEdgeMem[0]), &absEdgeMem[0]);
+        status |= clSetKernelArg(nmsKernel, 1, sizeof(absEdgeMem[1]), &absEdgeMem[1]);
+        status |= clSetKernelArg(nmsKernel, 2, sizeof(nmsMem), &nmsMem);
+
+        status = clEnqueueNDRangeKernel(mgr->commandQueue, nmsKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
+        
+        return nmsMem;
+    }
+
+    virtual cl_mem toUchar(cl_mem floatMem) {
+        cl_mem ucharMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(int32_t) * image->w * image->h, NULL, NULL);
+        
+        cl_int status = 0;
+        size_t gdims[] = { image->w, image->h };
+
+
+        status = clSetKernelArg(ucharKernel, 0, sizeof(floatMem), &floatMem);
+        status |= clSetKernelArg(ucharKernel, 1, sizeof(ucharMem), &ucharMem);
+
+        status = clEnqueueNDRangeKernel(mgr->commandQueue, ucharKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
+
+        return ucharMem;
+    }
 
     virtual void onApply() {
-		// ==================================================
-		// ==== called when clicking the "apply" button ====
-		// ==================================================
+        // ==================================================
+        // ==== called when clicking the "apply" button ====
+        // ==================================================
         if (!outbuf || !image) return;
 
         size_t gdims[] = { image->w, image->h };
-
-		cl_int dim = 3;
+        cl_int status = 0;
+        cl_int dim = 3;
         cl_int flag = 1; // 1 if absolute values wanted, 0 if scaled values wanted
 
-        cl_float FilterMat[9] = { -1, -1, -1, -1, 8, -1, -1, -1, -1 };
-        //cl_float FilterMat[9] = { 0, 0, 0, 0, 1, 0, 0, 0, 0 };
-        //cl_float FilterMat[9] = { 0.0625, 0.125, 0.0625, 0.125, 0.25, 0.125, 0.0625, 0.125, 0.0625 };    // Blurr
-        // cl_float FilterMat[9] = { 0, -1, 0, -1, 5, -1, 0, -1, 0 };                                       // Sharpen
-        // cl_mem filtermem = clCreateBuffer(mgr->context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_int) * dim * dim, FilterMat, NULL);
 
-        cl_int status = 0;
-		//status = clSetKernelArg(procKernel, 0, sizeof(inmem), &inmem);
-		//status |= clSetKernelArg(procKernel, 1, sizeof(outmem), &outmem);
-		//status |= clSetKernelArg(procKernel, 2, sizeof(cl_int), &image->w);
-		//status |= clSetKernelArg(procKernel, 3, sizeof(cl_int), &image->h);
-        //status |= clSetKernelArg(procKernel, 4, sizeof(cl_int), &dim);
-        //status |= clSetKernelArg(procKernel, 5, sizeof(filtermem), &filtermem);
-        //status |= clSetKernelArg(procKernel, 6, sizeof(cl_int), &flag);
-		
-
-		//if (status)
-		//	throw "set kernel arg";
-		//status |= clEnqueueNDRangeKernel(mgr->commandQueue, procKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
-
-        //cl_mem gaussMem = applyFilter(inmem, FilterMat, dim, flag);
-
-        //status = clEnqueueReadBuffer(mgr->commandQueue, gaussMem, CL_TRUE, 0, sizeof(*outbuf)*image->w*image->h, outbuf, 0, NULL, NULL);
-        //if (status) throw "enqueue commands";
-
-        // using the applyGrey function to greyscale the input image
+        // ==== 1. Greyscale image ====
         cl_mem greyMem = applyGrey(inmem);
 
-        // reading the greyscale result
-        //status = clEnqueueReadBuffer(mgr->commandQueue, greyMem, CL_TRUE, 0, sizeof(*outbuf) * image->w * image->h, outbuf, 0, NULL, NULL);
 
-
+        // ==== 2. Gauss smoothing ====
         // create smoothin filter
-        cl_float glattFilterMat[9] = { 0.0625, 0.125, 0.0625, 0.125, 0.25, 0.125, 0.0625, 0.125, 0.0625 };
+        cl_float gaussFilterMat[9] = { 0.0625, 0.125, 0.0625, 0.125, 0.25, 0.125, 0.0625, 0.125, 0.0625 };
 
         // applying the smoothing filter on the greyscaled picture
-        cl_mem glattMem = applyFilter(greyMem, glattFilterMat, dim, flag);
+        cl_mem gaussMem = applyFilter(greyMem, gaussFilterMat, dim, flag);
+        for (int i = 0; i < 3; i++) {
+        gaussMem = applyFilter(gaussMem, gaussFilterMat, dim, flag);
+        }
 
-        // reading the smoothing result
-        status = clEnqueueReadBuffer(mgr->commandQueue, glattMem, CL_TRUE, 0, sizeof(*outbuf) * image->w * image->h, outbuf, 0, NULL, NULL);
+        // release not anymore needed memory buffer of greyscaled image
+        clReleaseMemObject(greyMem);
 
 
-        // creating bufer for greyscale kernel
-        // cl_mem filtermem = clCreateBuffer(mgr->context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_int)*dim*dim, FilterMat, NULL);
+        // ==== 3. x- and y-Sobel edge detection ====
+        // x and y sobel filters
+        cl_float sobelXFilterMat[9] = { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
+        cl_float sobelYFilterMat[9] = { 1, 2, 1, 0, 0, 0, -1, -2, -1 };
+
+        //applying both filters on the smoothed picture
+        cl_mem xSobelMem = applyFilter(gaussMem, sobelXFilterMat, dim, flag);
+        cl_mem ySobelMem = applyFilter(gaussMem, sobelYFilterMat, dim, flag);
+
+        // release not anymore needed memory buffer of smoothed image memory buffer
+        clReleaseMemObject(gaussMem);
+
+
+        // ==== 4. Calculating absolute edgestrength ====
+        cl_mem* absEdgeMem = applyAbsEdge(xSobelMem, ySobelMem);
+
+
+        // ==== 5. Applying non-maximum supression
+        cl_mem nmsMem = applyNms(absEdgeMem);
+        clReleaseMemObject(*absEdgeMem);
+
+
+        // ==== Lastly convert back to uchar
+        cl_mem ucharMem = toUchar(nmsMem);
+        clReleaseMemObject(nmsMem);
+
+
+
+        // reading the result
+        status = clEnqueueReadBuffer(mgr->commandQueue, ucharMem, CL_TRUE, 0, sizeof(*outbuf) * image->w * image->h, outbuf, 0, NULL, NULL);
+        std::cout << status;
+        float* outbuf_2;
+        outbuf_2 = new float[image->w * image->h];
+
+        // reading the result
+        status = clEnqueueReadBuffer(mgr->commandQueue, absEdgeMem[1], CL_TRUE, 0, sizeof(*outbuf_2) * image->w * image->h, outbuf_2, 0, NULL, NULL);
+
+        std::cout << *std::max_element(outbuf_2, outbuf_2 + (image->w * image->h)) << "\n";
+        std::cout << *std::min_element(outbuf_2, outbuf_2 + (image->w * image->h));
+
+        //int j = image->w * image->h;
+        //for (int i = 0; i < j; i++) {
+        //std::cout << outbuf_2[i] << '\n';
+        //}
 
     }
 };
@@ -227,4 +303,3 @@ int _tmain(int argc, _TCHAR* argv[])
 	main(argc, NULL);
 	return 0;
 }
-
