@@ -26,6 +26,7 @@ public:
 	cl_kernel absEdgeKernel;
 	cl_kernel nmsKernel;
 	cl_kernel ucharKernel;
+	cl_kernel hystereseKernel;
 
 private:
 	static int convertToString(const char* filename, std::string& s);

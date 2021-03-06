@@ -44,7 +44,7 @@ int convertToString(const char *filename, std::string& s) {
 // ==== filenames for UI ====
 // ==========================
 
-std::string inputFilename = "Banane.png";
+std::string inputFilename = "pp.jpeg";
 std::string outputFilename = "ImageFX.bmp";
 
 struct ImgFXWindow : Window {
@@ -54,6 +54,7 @@ struct ImgFXWindow : Window {
     cl_kernel absEdgeKernel;
     cl_kernel nmsKernel;
     cl_kernel ucharKernel;
+    cl_kernel hystereseKernel;
 
     int32_t *outbuf;
     SDL_Surface *image;
@@ -71,6 +72,7 @@ struct ImgFXWindow : Window {
         absEdgeKernel = mgr->absEdgeKernel;
         nmsKernel = mgr->nmsKernel;
         ucharKernel = mgr->ucharKernel;
+        hystereseKernel = mgr->hystereseKernel;
 
         onReset();
     }
@@ -206,6 +208,21 @@ struct ImgFXWindow : Window {
         return ucharMem;
     }
 
+    virtual cl_mem applyHysterese(cl_mem floatMem) {
+        cl_mem hystMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
+
+        cl_int status = 0;
+        size_t gdims[] = { image->w, image->h };
+
+
+        status = clSetKernelArg(hystereseKernel, 0, sizeof(floatMem), &floatMem);
+        status |= clSetKernelArg(hystereseKernel, 1, sizeof(hystMem), &hystMem);
+
+        status = clEnqueueNDRangeKernel(mgr->commandQueue, hystereseKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
+
+        return hystMem;
+    }
+
     virtual void onApply() {
         // ==================================================
         // ==== called when clicking the "apply" button ====
@@ -257,10 +274,13 @@ struct ImgFXWindow : Window {
         cl_mem nmsMem = applyNms(absEdgeMem);
         clReleaseMemObject(*absEdgeMem);
 
+        // ==== 6. Apply hyterese claculations
+        cl_mem hystMem = applyHysterese(nmsMem);
+        //clReleaseMemObject(nmsMem);
 
         // ==== Lastly convert back to uchar
-        cl_mem ucharMem = toUchar(nmsMem);
-        clReleaseMemObject(nmsMem);
+        cl_mem ucharMem = toUchar(hystMem);
+        clReleaseMemObject(hystMem);
 
 
 
@@ -271,10 +291,10 @@ struct ImgFXWindow : Window {
         outbuf_2 = new float[image->w * image->h];
 
         // reading the result
-        status = clEnqueueReadBuffer(mgr->commandQueue, absEdgeMem[1], CL_TRUE, 0, sizeof(*outbuf_2) * image->w * image->h, outbuf_2, 0, NULL, NULL);
+        //status = clEnqueueReadBuffer(mgr->commandQueue, absEdgeMem[1], CL_TRUE, 0, sizeof(*outbuf_2) * image->w * image->h, outbuf_2, 0, NULL, NULL);
 
-        std::cout << *std::max_element(outbuf_2, outbuf_2 + (image->w * image->h)) << "\n";
-        std::cout << *std::min_element(outbuf_2, outbuf_2 + (image->w * image->h));
+        //std::cout << *std::max_element(outbuf_2, outbuf_2 + (image->w * image->h)) << "\n";
+        //std::cout << *std::min_element(outbuf_2, outbuf_2 + (image->w * image->h));
 
         //int j = image->w * image->h;
         //for (int i = 0; i < j; i++) {

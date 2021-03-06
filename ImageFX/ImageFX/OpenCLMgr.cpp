@@ -24,6 +24,7 @@ OpenCLMgr::OpenCLMgr()
 	absEdgeKernel = 0;
 	nmsKernel = 0;
 	ucharKernel = 0;
+	hystereseKernel = 0;
 
 	valid = (init() == SUCCESS);
 }
@@ -39,6 +40,7 @@ OpenCLMgr::~OpenCLMgr()
 	if (absEdgeKernel) status = clReleaseKernel(absEdgeKernel);
 	if (nmsKernel) status = clReleaseKernel(nmsKernel);
 	if (ucharKernel) status = clReleaseKernel(ucharKernel);
+	if (hystereseKernel) status = clReleaseKernel(hystereseKernel);
 
 	//Release the program object.
 	if (program) status = clReleaseProgram(program);
@@ -168,6 +170,7 @@ cl_int OpenCLMgr::init()
 	nmsKernel = clCreateKernel(program, "nms", NULL);
 	procKernel = clCreateKernel(program, "imgfx", NULL);
 	ucharKernel = clCreateKernel(program, "to_uchar", NULL);
+	hystereseKernel = clCreateKernel(program, "hysterese", NULL);
 
 	return status;
 }

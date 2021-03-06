@@ -127,3 +127,43 @@ __kernel void nms(__global float* in, __global float* helper, __global float* ou
 	out[pos] = out[pos] + helper[pos];
 
 }
+
+__kernel void hysterese(__global float* in, __global float* out) {
+	float low = 10;
+	float high = 70;
+
+	float edge = 255;
+	int pos = GY * GH + GX;
+
+	float pixel = in[pos];
+
+	if (pixel >= high) {
+		out[pos] = edge;
+	}
+	else if (pixel <= low) {
+		out[pos] = 0;
+	}
+	else {
+		float median = (high + low) / 2;
+		// Check for neighbour pixels being over threshold
+		if (pixel >= median) {
+			// avoid being at border
+			if (GX > 0 && GX < GW - 1 && GY > 0 && GY < GH - 1) {
+				float leftPixel = in[pos - 1];
+				float rightPixel = in[pos + 1];
+				float topPixel = in[pos - GH];
+				float bottomPixel = in[pos + GH];
+				if ( leftPixel > high || rightPixel > high || topPixel > high || bottomPixel > high) {
+					out[pos] = edge;
+				}
+				else {
+					out[pos] = 0;
+				}
+			}
+		}
+		else {
+			out[pos] = 0;
+		}
+	}
+
+}
