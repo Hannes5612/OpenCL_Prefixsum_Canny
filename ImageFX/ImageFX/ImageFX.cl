@@ -9,30 +9,10 @@
 #define LY get_local_id(1)
 
 
+#define L_SIZE 16
+
 
 __kernel void imgfx(__global float* in, __global float* out, int width, int height, int dim, __global float* filterMat, int flag) {
-
-
-	int rowOffset = GY * GW;
-	int my = GX + rowOffset;
-
-	int fIndex = 0;
-	float sumR = 0.0;
-
-
-	for (int r = -1; r <= 1; r++)
-	{
-		int curRow = my + r * GW;
-		for (int c = -1; c <= 1; c++, fIndex++)
-		{
-			int offset = c;
-
-			sumR += in[curRow + offset] * filterMat[fIndex];
-		}
-	}
-
-	out[my] = sumR;
-
 
 
 	{
@@ -48,8 +28,8 @@ __kernel void imgfx(__global float* in, __global float* out, int width, int heig
 	//// uchar4 value = a*convert_float4(pix1) + b*convert_float4(pix2);
 	//// out[0] = convert_uchar4(value);
 
-	//float calculated_pixel = 0.0;
-	//int offset = (dim - 1) / 2;
+	float calculated_pixel = 0.0;
+	int offset = (dim - 1) / 2;
 
 	//if (GX > offset && GX < width - offset && GY > offset && GY < height - offset) {
 	//	float rSum = 0, kSum = 0;
@@ -90,7 +70,7 @@ __kernel void imgfx(__global float* in, __global float* out, int width, int heig
 	////int sum = 0;
 
 	////// Current pixel
-	//size_t pos = width * GY + GX;
+	size_t pos = width * GY + GX;
 
 	////for (int r = 0; r < dim; r++) {
 	////	const int indexIntmp = (GY + r) * width + GX;
@@ -118,42 +98,42 @@ __kernel void imgfx(__global float* in, __global float* out, int width, int heig
 	////}
 
 	////// OWN CODE ==================================
-	////int filter_index = 0;
+	int filter_index = 0;
 
-	////// Go through filter matrix indices and calculate endpixel
-	////for (int y_axis_index = GY - offset; y_axis_index <= GY + offset; y_axis_index++) {		// Go through horizontally
-	////	for (int x_axis_index = GX - offset; x_axis_index <= GX + offset; x_axis_index++) {	// Go through vertically
-	////		if (x_axis_index >= 0 && y_axis_index >= 0										// Make sure to not multiply by negative values -> would skip whole x=0 and y=0
-	////			&& x_axis_index <= GY * GW + GX && y_axis_index <= GY * GW + GX) 
-	////		{									
-	////			int one_dim_ind = y_axis_index * width + x_axis_index;						// Calculate used index
-	////			float pixel = in[one_dim_ind];												// Get pixel values of index
-	////			calculated_pixel += filterMat[filter_index] * pixel;						// Add weighted values to end pixel
-	////		}
-	////		filter_index++;																	// Increase filter matrix index
-	////	}
-	////}
-	////
-	////// Check if we are at border pixels
-	////if (GX < offset || GY < offset || GX >= (GW - offset) || GY >= (GH - offset)) {
-	////	calculated_pixel = 0.0;
-	////} ===================================================
+	// Go through filter matrix indices and calculate endpixel
+	for (int y_axis_index = GY - offset; y_axis_index <= GY + offset; y_axis_index++) {		// Go through horizontally
+		for (int x_axis_index = GX - offset; x_axis_index <= GX + offset; x_axis_index++) {	// Go through vertically
+			if (x_axis_index >= 0 && y_axis_index >= 0										// Make sure to not multiply by negative values -> would skip whole x=0 and y=0
+				&& x_axis_index <= GY * GW + GX && y_axis_index <= GY * GW + GX) 
+			{									
+				int one_dim_ind = y_axis_index * width + x_axis_index;						// Calculate used index
+				float pixel = in[one_dim_ind];												// Get pixel values of index
+				calculated_pixel += filterMat[filter_index] * pixel;						// Add weighted values to end pixel
+			}
+			filter_index++;																	// Increase filter matrix index
+		}
+	}
+	
+	// Check if we are at border pixels
+	if (GX < offset || GY < offset || GX >= (GW - offset) || GY >= (GH - offset)) {
+		calculated_pixel = 0.0;
+	} 
 
-	////barrier(CLK_LOCAL_MEM_FENCE);
+	barrier(CLK_LOCAL_MEM_FENCE);
 
-	////// clamp value in allowed range
-	//calculated_pixel = (float)clamp((float)calculated_pixel, (float)-255, (float)255);
+	//// clamp value in allowed range
+	calculated_pixel = (float)clamp((float)calculated_pixel, (float)-255, (float)255);
 
-	////// Apply scaling or absolution
-	//if ( flag == 1) {	// -> We want absolute values
-	////	calculated_pixel = fabs(calculated_pixel);
-	//}
-	//else {				// -> We want scaled values
-	//	calculated_pixel = (calculated_pixel + 255) /2;
-	//}
+	//// Apply scaling or absolution
+	if ( flag == 1) {	// -> We want absolute values
+	//	calculated_pixel = fabs(calculated_pixel);
+	}
+	else {				// -> We want scaled values
+		calculated_pixel = (calculated_pixel + 255) /2;
+	}
 
-	////// Write in output buffer
-	//out[pos] = calculated_pixel;
+	//// Write in output buffer
+	out[pos] = calculated_pixel;
 }}
 
 

@@ -117,7 +117,9 @@ struct ImgFXWindow : Window {
 
     virtual cl_mem applyFilter(cl_mem in_buffer,  cl_float* FilterMat, cl_int dim, cl_int flag){
         size_t gdims[] = { image->w, image->h };
-        
+        size_t local_size[] = { 16, 16 };
+
+
         cl_mem out_buffer = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float)*image->w*image->h, NULL, NULL);
         cl_mem filtermem = clCreateBuffer(mgr->context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_int) * dim * dim, FilterMat, NULL);
 
@@ -133,7 +135,7 @@ struct ImgFXWindow : Window {
         if (status)
 			throw "set kernel arg";
         
-        status |= clEnqueueNDRangeKernel(mgr->commandQueue, procKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
+        status |= clEnqueueNDRangeKernel(mgr->commandQueue, procKernel, 2, NULL, gdims, local_size, 0, NULL, NULL);
         std::cout << status;
 
         return out_buffer;
@@ -259,7 +261,7 @@ struct ImgFXWindow : Window {
 
 
         // ==== Lastly convert back to uchar
-        cl_mem ucharMem = toUchar(xSobelMem);
+        cl_mem ucharMem = toUchar(nmsMem);
 
 
 
