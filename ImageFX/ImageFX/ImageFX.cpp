@@ -117,7 +117,6 @@ struct ImgFXWindow : Window {
 
     virtual cl_mem applyFilter(cl_mem in_buffer,  cl_float* FilterMat, cl_int dim, cl_int flag){
         size_t gdims[] = { image->w, image->h };
-        size_t local_size[] = { 16, 16 };
 
 
         cl_mem out_buffer = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float)*image->w*image->h, NULL, NULL);
@@ -135,7 +134,7 @@ struct ImgFXWindow : Window {
         if (status)
 			throw "set kernel arg";
         
-        status |= clEnqueueNDRangeKernel(mgr->commandQueue, procKernel, 2, NULL, gdims, local_size, 0, NULL, NULL);
+        status |= clEnqueueNDRangeKernel(mgr->commandQueue, procKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
         std::cout << status;
 
         return out_buffer;
@@ -229,27 +228,25 @@ struct ImgFXWindow : Window {
 
         // applying the smoothing filter on the greyscaled picture
         cl_mem gaussMem = applyFilter(greyMem, gaussFilterMat, dim, flag);
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 3; i++) {
         gaussMem = applyFilter(gaussMem, gaussFilterMat, dim, flag);
         }
 
         // release not anymore needed memory buffer of greyscaled image
-        //clReleaseMemObject(greyMem);
+        clReleaseMemObject(greyMem);
 
 
         // ==== 3. x- and y-Sobel edge detection ====
         // x and y sobel filters
         cl_float sobelXFilterMat[9] = { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
         cl_float sobelYFilterMat[9] = { 1, 2, 1, 0, 0, 0, -1, -2, -1 };
-        //cl_float sobelXFilterMat[9] = { -1, -2, -1, 0, 0, 0, -1, -2, -1 };
-        //cl_float sobelYFilterMat[9] = { 1, 0, -1, 2, 0, -2, 1, 0, 1 };
 
         //applying both filters on the smoothed picture
         cl_mem xSobelMem = applyFilter(gaussMem, sobelXFilterMat, dim, flag);
         cl_mem ySobelMem = applyFilter(gaussMem, sobelYFilterMat, dim, flag);
 
         // release not anymore needed memory buffer of smoothed image memory buffer
-        // clReleaseMemObject(gaussMem);
+        clReleaseMemObject(gaussMem);
 
 
         // ==== 4. Calculating absolute edgestrength ====
@@ -258,15 +255,16 @@ struct ImgFXWindow : Window {
 
         // ==== 5. Applying non-maximum supression
         cl_mem nmsMem = applyNms(absEdgeMem);
+        clReleaseMemObject(*absEdgeMem);
 
 
         // ==== Lastly convert back to uchar
         cl_mem ucharMem = toUchar(nmsMem);
+        clReleaseMemObject(nmsMem);
 
 
 
         // reading the result
-
         status = clEnqueueReadBuffer(mgr->commandQueue, ucharMem, CL_TRUE, 0, sizeof(*outbuf) * image->w * image->h, outbuf, 0, NULL, NULL);
         std::cout << status;
         float* outbuf_2;

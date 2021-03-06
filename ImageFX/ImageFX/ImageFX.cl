@@ -30,74 +30,8 @@ __kernel void imgfx(__global float* in, __global float* out, int width, int heig
 
 	float calculated_pixel = 0.0;
 	int offset = (dim - 1) / 2;
-
-	//if (GX > offset && GX < width - offset && GY > offset && GY < height - offset) {
-	//	float rSum = 0, kSum = 0;
-	//	for (uint i = 0; i < dim; i++)
-	//	{
-	//		for (uint j = 0; j < dim; j++)
-	//		{
-	//			int pixelPosX = GX + (i - (dim / 2));
-	//			int pixelPosY = GY + (j - (dim / 2));
-
-	//			if ((pixelPosX < 0) ||
-	//				(pixelPosX >= width) ||
-	//				(pixelPosY < 0) ||
-	//				(pixelPosY >= height)) continue;
-
-	//			float r = in[pixelPosX + pixelPosY * width];
-	//			float filterVal = filterMat[i + j * dim];
-	//			rSum += r * filterVal;
-
-	//			kSum += filterVal;
-	//		}
-	//	}
-	//	if (kSum == 0) kSum = 1;
-	//	rSum /= kSum;
-	//	calculated_pixel = rSum;
-	//}
-	//else {
-	//	calculated_pixel = 255;
-	//}
-	//barrier(CLK_LOCAL_MEM_FENCE);
-
-
-	//// Radius of the filter matrix
-	////int offset = (dim - 1) / 2;
-
-	//// Pixel to calculate
-
-	////int sum = 0;
-
-	////// Current pixel
 	size_t pos = width * GY + GX;
 
-	////for (int r = 0; r < dim; r++) {
-	////	const int indexIntmp = (GY + r) * width + GX;
-	////	for (int c = 0; c < dim; c++) {
-	////		sum += filterMat[r * dim + c] * in[indexIntmp + c];
-	////	}
-	////}
-
-
-	////if (GX < offset || GX > width - offset - 1 || GY < offset || GY > height - offset - 1) {
-	////	calculated_pixel = in[pos];
-	////}
-	////else {
-	////	int index = 0;
-	////	calculated_pixel = 0.0;
-
-	////	for (int r = -offset; r <= offset; r++) {
-	////		int curRowPos = pos + r * width;
-	////		for (int c = -offset; c <= offset; c++) {
-	////			calculated_pixel += in[curRowPos + c] * filterMat[index];
-	////			index++;
-	////			if (index > 8) index = 0;
-	////		}
-	////	}
-	////}
-
-	////// OWN CODE ==================================
 	int filter_index = 0;
 
 	// Go through filter matrix indices and calculate endpixel
@@ -121,18 +55,18 @@ __kernel void imgfx(__global float* in, __global float* out, int width, int heig
 
 	barrier(CLK_LOCAL_MEM_FENCE);
 
-	//// clamp value in allowed range
+	// clamp value in allowed range
 	calculated_pixel = (float)clamp((float)calculated_pixel, (float)-255, (float)255);
 
-	//// Apply scaling or absolution
+	// Apply scaling or absolution
 	if ( flag == 1) {	// -> We want absolute values
-	//	calculated_pixel = fabs(calculated_pixel);
+		calculated_pixel = fabs(calculated_pixel);
 	}
 	else {				// -> We want scaled values
 		calculated_pixel = (calculated_pixel + 255) /2;
 	}
 
-	//// Write in output buffer
+	// Write in output buffer
 	out[pos] = calculated_pixel;
 }}
 
@@ -155,68 +89,41 @@ __kernel void to_uchar(__global float* in, __global uchar4* out) {
 kernel void abs_edge(global float* x_sobel, global float* y_sobel, global float* outAbs, __global float* outGrad) {
 
 	size_t pos = GW * GY + GX;
-	const float PI = 3.14159265;
 
 	float x = x_sobel[pos];
 	float y = y_sobel[pos];
 
-	// Calculate gradients
-	float radian = atan2(x, y) ;
-
-	if (radian < 0) {
-		// wrap around negative values to (0..PI):
-		// Add PI, take mod PI for safety
-		radian = fmod(radian + 2* PI, 2* PI); // fmod => modulo for floats with rounding
-	}
-
-	float degree = degrees(radian);
-	float roundedDegree;
-	roundedDegree = (int)round(degree / 45.0) * 45 % 180;
-
-	outGrad[pos] = roundedDegree;
-	// Calculate absolute values
 	outAbs[pos] = min(hypot(x, y), 255.0f);
 }
 
-__kernel void nms(__global float* abs, __global float* grad, __global float* out) {
+__kernel void nms(__global float* in, __global float* helper, __global float* out) {
 	size_t pos = GY * GW + GX;
+	float pixel = in[pos];
 	float newPixel = 0.0;
 	
-	// Skip caltulation if at border
-	if (GY > 0 && GX > 0 && GX < GW - 1 && GY < GH - 1) {
-
-		// 
-		switch ((int)grad[pos]) {
-
-			// check left and right
-		case 0:
-			if (abs[pos] > abs[pos - 1] && abs[pos] > abs[pos + 1]) {
-				newPixel = abs[pos];
-			}
-			break;
-
-			// check top right and bottom left
-		case 45:
-			if (abs[pos] > abs[pos - GW + 1] && abs[pos] > abs[pos + GW - 1]) {
-				newPixel = abs[pos];
-			}
-			break;
-			// Check top and bottom
-		case 90:
-			if (abs[pos] > abs[pos - GW] && abs[pos] > abs[pos + GW]) {
-				newPixel = abs[pos];
-			}
-			break;
-			// Check top left and bottom right
-		case 135:
-			if (abs[pos] > abs[pos - GW - 1] && abs[pos] > abs[pos + GW + 1]) {
-				newPixel = abs[pos];
-			}
-			break;
-		default:
-			break;
+	if (GX > 0 && GX < GW - 1) {
+		float leftPixel = in[pos - 1];
+		float rightPixel = in[pos + 1];
+		if (leftPixel <= pixel && rightPixel < pixel) {
+			newPixel = pixel;
 		}
 	}
-	
+	helper[pos] = newPixel;
+
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	if (GY > 0 && GY < GH - 1) {
+		float topPixel = in[pos - GH];
+		float bottomPixel = in[pos + GH];
+		if (topPixel <= pixel && bottomPixel < pixel) {
+			newPixel = pixel;
+		}
+	}
+
 	out[pos] = newPixel;
+
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	out[pos] = out[pos] + helper[pos];
+
 }
