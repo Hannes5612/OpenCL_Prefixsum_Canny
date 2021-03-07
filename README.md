@@ -19,4 +19,4 @@ Um ein anderes Bild zu wählen, muss man in Zeile 47 der `ImageFX.cpp` Datei auf
 
 ### Stage 1 Graustufen
 
-![](ImageFX/ImageFX/examples of the different stages/banana/Banane.png)
+![](canny_examples/banana/Banane.png)
