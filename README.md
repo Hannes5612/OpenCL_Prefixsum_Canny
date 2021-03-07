@@ -14,3 +14,9 @@ Ist das Programm gestartet, gibt es drei Schalter die beschreibend bennant das t
 Bei Druck auf _apply_ muss man darauf achten, dass in der Kommandozeile konfigurationen abgefragt werden, sobald diese eingegeben wurden startet die Berechnung.
 
 Um ein anderes Bild zu wählen, muss man in Zeile 47 der `ImageFX.cpp` Datei auf dieses verweisen. Im _images_ Ordner liegen bereits einige Bilder zur verwenung bereit.
+
+## Banane Beispiel
+
+### Stage 1 Graustufen
+
+![](/ImageFX/ImageFX/examples of the different stages/banana/Banane.png)
