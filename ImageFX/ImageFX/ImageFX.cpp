@@ -44,7 +44,7 @@ int convertToString(const char *filename, std::string& s) {
 // ==== filenames for UI ====
 // ==========================
 
-std::string inputFilename = "pp.jpeg";
+std::string inputFilename = "images/hate.png";
 std::string outputFilename = "ImageFX.bmp";
 
 struct ImgFXWindow : Window {
@@ -158,35 +158,31 @@ struct ImgFXWindow : Window {
         return greyMem;
     }
 
-    virtual cl_mem* applyAbsEdge(cl_mem xSobelMem, cl_mem ySobelMem) {
+    virtual cl_mem applyAbsEdge(cl_mem xSobelMem, cl_mem ySobelMem) {
         // Create Buffer for abs strengths and gradients
-        cl_mem* absEdgeMem = new cl_mem[2];
-        absEdgeMem[0] = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
-        absEdgeMem[1] = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
+        cl_mem absEdgeMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
 
         cl_int status = 0;
         size_t gdims[] = { image->w, image->h };
 
         status = clSetKernelArg(absEdgeKernel, 0, sizeof(xSobelMem), &xSobelMem);
         status |= clSetKernelArg(absEdgeKernel, 1, sizeof(ySobelMem), &ySobelMem);
-        status |= clSetKernelArg(absEdgeKernel, 2, sizeof(absEdgeMem[0]), &absEdgeMem[0]);
-        status |= clSetKernelArg(absEdgeKernel, 3, sizeof(absEdgeMem[1]), &absEdgeMem[1]);
+        status |= clSetKernelArg(absEdgeKernel, 2, sizeof(absEdgeMem), &absEdgeMem);
 
         status = clEnqueueNDRangeKernel(mgr->commandQueue, absEdgeKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
 
         return absEdgeMem;
     }
 
-    virtual cl_mem applyNms(cl_mem* absEdgeMem) {
+    virtual cl_mem applyNms(cl_mem absEdgeMem) {
         cl_mem nmsMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
 
         cl_int status = 0;
         size_t gdims[] = { image->w, image->h };
 
 
-        status = clSetKernelArg(nmsKernel, 0, sizeof(absEdgeMem[0]), &absEdgeMem[0]);
-        status |= clSetKernelArg(nmsKernel, 1, sizeof(absEdgeMem[1]), &absEdgeMem[1]);
-        status |= clSetKernelArg(nmsKernel, 2, sizeof(nmsMem), &nmsMem);
+        status = clSetKernelArg(nmsKernel, 0, sizeof(absEdgeMem), &absEdgeMem);
+        status |= clSetKernelArg(nmsKernel, 1, sizeof(nmsMem), &nmsMem);
 
         status = clEnqueueNDRangeKernel(mgr->commandQueue, nmsKernel, 2, NULL, gdims, NULL, 0, NULL, NULL);
         
@@ -228,12 +224,11 @@ struct ImgFXWindow : Window {
         // ==== called when clicking the "apply" button ====
         // ==================================================
         if (!outbuf || !image) return;
-
         size_t gdims[] = { image->w, image->h };
         cl_int status = 0;
         cl_int dim = 3;
         cl_int flag = 1; // 1 if absolute values wanted, 0 if scaled values wanted
-
+        
 
         // ==== 1. Greyscale image ====
         cl_mem greyMem = applyGrey(inmem);
@@ -245,12 +240,12 @@ struct ImgFXWindow : Window {
 
         // applying the smoothing filter on the greyscaled picture
         cl_mem gaussMem = applyFilter(greyMem, gaussFilterMat, dim, flag);
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 5; i++) {
         gaussMem = applyFilter(gaussMem, gaussFilterMat, dim, flag);
         }
 
         // release not anymore needed memory buffer of greyscaled image
-        clReleaseMemObject(greyMem);
+        // clReleaseMemObject(greyMem);
 
 
         // ==== 3. x- and y-Sobel edge detection ====
@@ -263,16 +258,16 @@ struct ImgFXWindow : Window {
         cl_mem ySobelMem = applyFilter(gaussMem, sobelYFilterMat, dim, flag);
 
         // release not anymore needed memory buffer of smoothed image memory buffer
-        clReleaseMemObject(gaussMem);
+        //clReleaseMemObject(gaussMem);
 
 
         // ==== 4. Calculating absolute edgestrength ====
-        cl_mem* absEdgeMem = applyAbsEdge(xSobelMem, ySobelMem);
+        cl_mem absEdgeMem = applyAbsEdge(xSobelMem, ySobelMem);
 
 
         // ==== 5. Applying non-maximum supression
         cl_mem nmsMem = applyNms(absEdgeMem);
-        clReleaseMemObject(*absEdgeMem);
+        // clReleaseMemObject(*absEdgeMem);
 
         // ==== 6. Apply hyterese claculations
         cl_mem hystMem = applyHysterese(nmsMem);
@@ -280,17 +275,17 @@ struct ImgFXWindow : Window {
 
         // ==== Lastly convert back to uchar
         cl_mem ucharMem = toUchar(hystMem);
-        clReleaseMemObject(hystMem);
+        //clReleaseMemObject(hystMem);
 
 
 
         // reading the result
         status = clEnqueueReadBuffer(mgr->commandQueue, ucharMem, CL_TRUE, 0, sizeof(*outbuf) * image->w * image->h, outbuf, 0, NULL, NULL);
-        std::cout << status;
+        // std::cout << status;
         float* outbuf_2;
         outbuf_2 = new float[image->w * image->h];
 
-        // reading the result
+        // reading data for debugging information
         //status = clEnqueueReadBuffer(mgr->commandQueue, absEdgeMem[1], CL_TRUE, 0, sizeof(*outbuf_2) * image->w * image->h, outbuf_2, 0, NULL, NULL);
 
         //std::cout << *std::max_element(outbuf_2, outbuf_2 + (image->w * image->h)) << "\n";

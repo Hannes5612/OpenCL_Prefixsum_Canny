@@ -119,7 +119,7 @@ struct Window {
         if (!IMG_Init(~0)) throw "IMG init";
         font = TTF_OpenFont("LiberationSans-Bold.ttf", 24);
         if (!font) throw "open font";
-        screen = SDL_SetVideoMode(640, 480, 32, SDL_HWSURFACE|SDL_RESIZABLE);
+        screen = SDL_SetVideoMode(1920, 1360, 32, SDL_HWSURFACE|SDL_RESIZABLE);
         if (!screen) throw "create screen";
 
 		apply = new Button(screen);

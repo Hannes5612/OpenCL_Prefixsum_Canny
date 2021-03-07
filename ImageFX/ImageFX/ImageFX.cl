@@ -15,6 +15,37 @@
 __kernel void imgfx(__global float* in, __global float* out, int width, int height, int dim, __global float* filterMat, int flag) {
 
 
+	//int kernel_rad = (dim - 1) / 2;
+	//if (GX > kernel_rad && GX < width - kernel_rad && GY>kernel_rad && GY < height - kernel_rad) {
+	//	float rSum = 0, kSum = 0;
+	//	for (uint i = 0; i < dim; i++)
+	//	{
+	//		for (uint j = 0; j < dim; j++)
+	//		{
+	//			int pixelPosX = GX + (i - (dim / 2));
+	//			int pixelPosY = GY + (j - (dim / 2));
+
+	//			if ((pixelPosX < 0) ||
+	//				(pixelPosX >= width) ||
+	//				(pixelPosY < 0) ||
+	//				(pixelPosY >= height)) continue;
+
+	//			float r = in[pixelPosX + pixelPosY * width];
+	//			float kernelVal = filterMat[i + j * dim];
+	//			rSum += r * kernelVal;
+
+	//			kSum += kernelVal;
+	//		}
+	//	}
+	//	if (kSum == 0) kSum = 1;
+	//	rSum /= kSum;
+	//	out[GX + GY * width] = rSum;
+	//}
+	//else {
+	//	out[GX + GY * width] = 255;
+	//}
+	//barrier(CLK_LOCAL_MEM_FENCE);
+
 	{
 	//// Die Pixel sind vom Datentyp uchar4. Ein solcher Vektor bestehend aus 4 uchar-Werten (rot, grün, blau, alpha)
 	//// kann mit einem einzelnen uchar multipliziert werden, aber nicht mit anderen Datentypen, wie z.B. einem float
@@ -74,29 +105,28 @@ __kernel void imgfx(__global float* in, __global float* out, int width, int heig
 __kernel void to_grey(__global uchar4* in, __global float* out) {
 
 	float4 pixel = convert_float4(in[GX + GY * GW]);
-	float average_rgb = dot(pixel, (float4)(1)) / 3;
-	pixel = (float4)(average_rgb, average_rgb, average_rgb, pixel.w);
+	float average_rgb = (pixel.x + pixel.y + pixel.z) / 3;
 
-	out[GX + GY * GW] = pixel.z * 0.299 + pixel.y * 0.587 + pixel.x * 0.114;
+	out[GX + GY * GW] = average_rgb;
 }
 
 __kernel void to_uchar(__global float* in, __global uchar4* out) {
-	int pixel = (int)in[GY * GW + GX];
-	out[GY * GW + GX] = (uchar4)(pixel, pixel, pixel, 255);
+	float pixel = in[GY * GW + GX];
+	out[GY * GW + GX] = (uchar4)(pixel, pixel, pixel, 1);
 }
 
 
-kernel void abs_edge(global float* x_sobel, global float* y_sobel, global float* outAbs, __global float* outGrad) {
+kernel void abs_edge(global float* x_sobel, global float* y_sobel, global float* out) {
 
 	size_t pos = GW * GY + GX;
 
 	float x = x_sobel[pos];
 	float y = y_sobel[pos];
 
-	outAbs[pos] = min(hypot(x, y), 255.0f);
+	out[pos] = min(255.0f, hypot(x, y));
 }
 
-__kernel void nms(__global float* in, __global float* helper, __global float* out) {
+__kernel void nms(__global float* in, __global float* out) {
 	size_t pos = GY * GW + GX;
 	float pixel = in[pos];
 	float newPixel = 0.0;
@@ -108,32 +138,28 @@ __kernel void nms(__global float* in, __global float* helper, __global float* ou
 			newPixel = pixel;
 		}
 	}
-	helper[pos] = newPixel;
 
 	barrier(CLK_LOCAL_MEM_FENCE);
 
 	if (GY > 0 && GY < GH - 1) {
-		float topPixel = in[pos - GH];
-		float bottomPixel = in[pos + GH];
+		float topPixel = in[pos - GW];
+		float bottomPixel = in[pos + GW];
 		if (topPixel <= pixel && bottomPixel < pixel) {
-			newPixel = pixel;
+			newPixel += pixel;
 		}
 	}
 
 	out[pos] = newPixel;
 
-	barrier(CLK_LOCAL_MEM_FENCE);
-
-	out[pos] = out[pos] + helper[pos];
 
 }
 
 __kernel void hysterese(__global float* in, __global float* out) {
-	float low = 10;
-	float high = 70;
+	float low = 30;
+	float high = 80;
 
 	float edge = 255;
-	int pos = GY * GH + GX;
+	int pos = GY * GW + GX;
 
 	float pixel = in[pos];
 
@@ -144,26 +170,19 @@ __kernel void hysterese(__global float* in, __global float* out) {
 		out[pos] = 0;
 	}
 	else {
-		float median = (high + low) / 2;
 		// Check for neighbour pixels being over threshold
-		if (pixel >= median) {
-			// avoid being at border
-			if (GX > 0 && GX < GW - 1 && GY > 0 && GY < GH - 1) {
-				float leftPixel = in[pos - 1];
-				float rightPixel = in[pos + 1];
-				float topPixel = in[pos - GH];
-				float bottomPixel = in[pos + GH];
-				if ( leftPixel > high || rightPixel > high || topPixel > high || bottomPixel > high) {
-					out[pos] = edge;
-				}
-				else {
-					out[pos] = 0;
-				}
+		// avoid being at border
+		if (GX > 0 && GX < GW - 1 && GY > 0 && GY < GH - 1) {
+			float leftPixel = in[pos - 1];
+			float rightPixel = in[pos + 1];
+			float topPixel = in[pos - GW];
+			float bottomPixel = in[pos + GW];
+			if (leftPixel > high || rightPixel > high || topPixel > high || bottomPixel > high) {
+				out[pos] = edge;
 			}
 		}
 		else {
 			out[pos] = 0;
 		}
 	}
-
 }
