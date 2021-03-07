@@ -1,5 +1,8 @@
 # Präfixsumme
 
+Das Programm berechnet die Präfixsummen aller Elemente eines Inputsarrays.
+Um es zu verwenden, das Repo clonen und den Ordner _PräfixSumme_ in Visual Studio öffnen. Um nun Präfixsummen zu brechenen kann man in Zeile 98 der Datei `PräfixSumme.cpp ` das Inputarray in Größe und Inhalt verändern, ind Zeile 128 kann entschieden werden, wie viel vom Ergebnisarray ausgegeben werden soll.. Ein simples ausführen des Debugger öffnet eine Kommandozeile die das gewünschte Ergebnis anzeigt.
+
 # ImageFX Canny Kantenerkennung
 
 Wie genau der Algorithmus arbeitet kann [hier](https://de.wikipedia.org/wiki/Canny-Algorithmus#Kantendetektion) nachgelesen werden.
