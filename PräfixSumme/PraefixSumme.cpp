@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
 	OpenCLMgr mgr;
 
 	// Initial input for the host and create memory objects for the kernel
-	int size = 263000;
+	int size = 20000;
 	cl_int* input = new cl_int[size];
 	for (int i = 0; i < size; i++) input[i] = 1;
 
