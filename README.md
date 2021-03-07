@@ -2,6 +2,8 @@
 
 # ImageFX Canny Kantenerkennung
 
+Wie genau der Algorithmus arbeitet kann [hier](https://de.wikipedia.org/wiki/Canny-Algorithmus#Kantendetektion) nachgelesen werden.
+
 ## Setup
 - Öffnen des ImageFX Ordners in Visual Studio (vorzugsweise VS 2019)
 - Prüfen ob die OpenCL Libraries richting in der Projektkonfiguration verwiesen werden
@@ -20,4 +22,16 @@ Um ein anderes Bild zu wählen, muss man in Zeile 47 der `ImageFX.cpp` Datei auf
 ### Stage 0 Original
 ![](canny_examples/banana/Banane.png)
 ### Stage 1 Graustufen
-![](canny_examples/banana/1.grey.bmp)
+![](canny_examples/banana/1.grey.png)
+### Stage 2 Gauss Blurr
+![](canny_examples/banana/2.blurr.png)
+### Stage 3 X-Sobel Filter 
+![](canny_examples/banana/3.xsobel.png)
+### Stage 3 Y-Sobel Filter 
+![](canny_examples/banana/3.ysobel.png)
+### Stage 4 Combination of both sobel filters: Asolute Edge Strengths
+![](canny_examples/banana/4.absedge.png)
+### Stage 5 Non maximum suppression
+![](canny_examples/banana/5.nms.png)
+### Stage 6 hysterese
+![](canny_examples/banana/6.hysterese.png)
