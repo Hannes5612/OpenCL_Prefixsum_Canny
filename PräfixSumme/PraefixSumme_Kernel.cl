@@ -7,13 +7,15 @@ __kernel void praefixsumme256_kernel(__global int* input_buffer_a, __global int*
     // Copy to local memory
     __local int localArray[256];
     localArray[lid] = input_buffer_a[gid];
-    barrier(CLK_LOCAL_MEM_FENCE);
+
 
     // Save last element to later calculate 
     int lastElementValue = 0;
     if (lid == 255) {
         lastElementValue = localArray[lid];
     }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
 
     // ### Up-Sweep
     int index1,                 // Used in addition

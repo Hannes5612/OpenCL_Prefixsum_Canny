@@ -78,6 +78,9 @@ int praefixsumme_own(cl_mem input_buffer_a, cl_mem output_buffer_b_e, int size, 
 		// Run the final kernel.
 		size_t global_work_size[1] = { (size + ( 256 - (size % 256))) };
 		size_t local_work_size[1] = { workgroup_size };
+		//size_t local_work_size[1] = { new_size / 256 };
+
+
 		status = clEnqueueNDRangeKernel(mgr.commandQueue, mgr.final_prefixsum, 1, NULL, global_work_size, local_work_size, 0, NULL, NULL);
 		CHECK_SUCCESS("Error: enqueuing the final kernel!")
 
@@ -97,17 +100,23 @@ int main(int argc, char* argv[])
 	OpenCLMgr mgr;
 
 	// Initial input,output for the host and create memory objects for the kernel
-	int size = 1000;
+	int size = 66000;
 	cl_int* input = new cl_int[size];
 	cl_int* output = new cl_int[size];
 
-	for (int i = 0; i < size; i++) input[i] = 2;
+	for (int i = 0; i < size; i++) input[i] = 1;
 
 	cl_int status;
-	int clsize = 256;
+	//int clsize = 256;
 
 	// größe für gesamten Inputarray berechnen, muss Vielfaches von 256 sein
-	int new_size = (size + (256 - (size % 256)));
+	//int new_size = (size + (256 - (size % 256)));
+	// int clsize = (size + 511) / 512 * 512;  // next multiple of 512
+	//int new_size = (size + 255) / 256 * 256;
+
+	cl_int new_size = ((size - 1) / 256 + 1) * 256;
+
+	std::cout << new_size << '\n';
 
 	// inputBuffer erstellen
 	cl_mem input_buffer_a = clCreateBuffer(mgr.context, CL_MEM_READ_ONLY, new_size * sizeof(cl_int), NULL, NULL);
