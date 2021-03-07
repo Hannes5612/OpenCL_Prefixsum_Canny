@@ -117,7 +117,7 @@ struct ImgFXWindow : Window {
 		// ================================================
 		saveBMP(outputFilename);
 	}
-
+    
 
     virtual cl_mem applyFilter(cl_mem in_buffer,  cl_float* FilterMat, cl_int dim, cl_int flag, size_t* global_size){
 
@@ -136,8 +136,7 @@ struct ImgFXWindow : Window {
     }
 
 
-    virtual cl_mem applyGrey(cl_mem in_buffer, size_t *global_size) {
-
+    virtual cl_mem applyGrey(cl_mem in_buffer, size_t* global_size) {
         // creating and setting parameters for grey_buffer kernel call
         cl_mem greyMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
         status = clSetKernelArg(greyKernel, 0, sizeof(in_buffer), &in_buffer);
@@ -150,6 +149,7 @@ struct ImgFXWindow : Window {
     }
 
     virtual cl_mem applyAbsEdge(cl_mem xSobelMem, cl_mem ySobelMem, size_t* global_size) {
+        size_t gdims[] = { image->w, image->h };
         // Create Buffer for abs strengths and gradients
         cl_mem absEdgeMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
 
@@ -163,6 +163,7 @@ struct ImgFXWindow : Window {
     }
 
     virtual cl_mem applyNms(cl_mem absEdgeMem, size_t* global_size) {
+        size_t gdims[] = { image->w, image->h };
         cl_mem nmsMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
 
         status = clSetKernelArg(nmsKernel, 0, sizeof(absEdgeMem), &absEdgeMem);
@@ -174,6 +175,7 @@ struct ImgFXWindow : Window {
     }
 
     virtual cl_mem toUchar(cl_mem floatMem, size_t* global_size) {
+        size_t gdims[] = { image->w, image->h };
         cl_mem ucharMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(int32_t) * image->w * image->h, NULL, NULL);
 
         status = clSetKernelArg(ucharKernel, 0, sizeof(floatMem), &floatMem);
@@ -184,11 +186,14 @@ struct ImgFXWindow : Window {
         return ucharMem;
     }
 
-    virtual cl_mem applyHysterese(cl_mem floatMem, size_t* global_size) {
+    virtual cl_mem applyHysterese(cl_mem floatMem, size_t* global_size, int minThreas, int maxThreas) {
+        size_t gdims[] = { image->w, image->h };
         cl_mem hystMem = clCreateBuffer(mgr->context, CL_MEM_READ_WRITE, sizeof(cl_float) * image->w * image->h, NULL, NULL);
 
         status = clSetKernelArg(hystereseKernel, 0, sizeof(floatMem), &floatMem);
         status |= clSetKernelArg(hystereseKernel, 1, sizeof(hystMem), &hystMem);
+        status |= clSetKernelArg(hystereseKernel, 2, sizeof(minThreas), &minThreas);
+        status |= clSetKernelArg(hystereseKernel, 3, sizeof(maxThreas), &maxThreas);
 
         status = clEnqueueNDRangeKernel(mgr->commandQueue, hystereseKernel, 2, NULL, global_size, NULL, 0, NULL, NULL);
 
@@ -197,8 +202,23 @@ struct ImgFXWindow : Window {
 
     virtual void onApply() {
         // ==================================================
-        // ==== called when clicking the "apply" button ====
+        // ==== called when clicking the "apply" button =====
         // ==================================================
+
+        std::string minStr;
+        std::string maxStr;
+        std::string gaussStr;
+        std::cout << "Enter gauss blurr strength (pref. between 1 and 10): ";
+        std::getline(std::cin, gaussStr);
+        std::cout << "Enter hysterisis min threashold (pref. between 10 and 30): ";
+        std::getline(std::cin, minStr);
+        std::cout << "Enter hysterisis max threashold (pref. between 50 and 150): ";
+        std::getline(std::cin, maxStr);
+        int minThres = std::stoi(minStr);
+        int maxThres = std::stoi(maxStr);
+        int gauss = std::stoi(gaussStr);
+        std::cout << "==== Calculating ====\n";
+
         if (!outbuf || !image) return;
         // Dimension of our filters
         cl_int dim = 3;
@@ -216,11 +236,9 @@ struct ImgFXWindow : Window {
 
         // applying the smoothing filter on the greyscaled picture
         cl_mem gaussMem = applyFilter(greyMem, gaussFilterMat, dim, flag, gdims);
-        for (int i = 0; i < 5; i++) {
+        for (int i = 1; i < gauss; i++) {
             gaussMem = applyFilter(gaussMem, gaussFilterMat, dim, flag, gdims);
         }
-        // release not anymore needed memory buffer of greyscaled image
-        clReleaseMemObject(greyMem);
 
         // ==== 3. x- and y-Sobel edge detection ====
         // x and y sobel filters
@@ -231,29 +249,35 @@ struct ImgFXWindow : Window {
         cl_mem xSobelMem = applyFilter(gaussMem, sobelXFilterMat, dim, flag, gdims);
         cl_mem ySobelMem = applyFilter(gaussMem, sobelYFilterMat, dim, flag, gdims);
 
-        // release not anymore needed memory buffer of smoothed image memory buffer
-        clReleaseMemObject(gaussMem);
-
         // ==== 4. Calculating absolute edgestrength, release previous buffer ====
         cl_mem absEdgeMem = applyAbsEdge(xSobelMem, ySobelMem, gdims);
-        clReleaseMemObject(xSobelMem);
-        clReleaseMemObject(ySobelMem);
+
 
         // ==== 5. Applying non-maximum supression, release previous buffer ======
         cl_mem nmsMem = applyNms(absEdgeMem, gdims);
-        clReleaseMemObject(absEdgeMem);
+
 
         // ==== 6. Apply hyterese claculations, release previous buffer ==========
-        cl_mem hystMem = applyHysterese(nmsMem, gdims);
-        clReleaseMemObject(nmsMem);
+        cl_mem hystMem = applyHysterese(nmsMem, gdims, minThres, maxThres);
+
 
         // ==== Lastly convert back to uchar, release previous buffer ============
         cl_mem ucharMem = toUchar(hystMem, gdims);
-        clReleaseMemObject(hystMem);
+
 
         // reading the result
         status = clEnqueueReadBuffer(mgr->commandQueue, ucharMem, CL_TRUE, 0, sizeof(*outbuf) * image->w * image->h, outbuf, 0, NULL, NULL);
-
+        
+        // Release allocated memory
+        clReleaseMemObject(greyMem);
+        clReleaseMemObject(gaussMem);
+        clReleaseMemObject(xSobelMem);
+        clReleaseMemObject(ySobelMem);
+        clReleaseMemObject(absEdgeMem);
+        clReleaseMemObject(nmsMem);
+        clReleaseMemObject(hystMem);       
+        clReleaseMemObject(ucharMem);
+        
         // Debug code
         {
             // std::cout << status;
@@ -294,3 +318,4 @@ int _tmain(int argc, _TCHAR* argv[])
 	main(argc, NULL);
 	return 0;
 }
+

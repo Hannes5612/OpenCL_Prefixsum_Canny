@@ -36,6 +36,8 @@ __kernel void imgfx(__global float* in, __global float* out, int dim, __global f
 			filter_index++;																	// Increase filter matrix index
 		}
 	}
+	barrier(CLK_LOCAL_MEM_FENCE);
+
 	
 	// Check if we are at border pixels -> set black if
 	if (GX < offset || GY < offset || GX >= (GW - offset) || GY >= (GH - offset)) {
@@ -90,64 +92,77 @@ kernel void abs_edge(global float* x_sobel, global float* y_sobel, global float*
 // ====== Non maximum suppression kernel ======
 __kernel void nms(__global float* in, __global float* out) {
 
-	// get input pixel
+	// Get input pixel
 	float pixel = in[pos];
 
-	// save edges
+	// Variable to save valid edges
 	float newPixel = 0.0;
 	
 	// Check for left and right values
 	if (GX > 0 && GX < GW - 1) {
 		float leftPixel = in[pos - 1];
 		float rightPixel = in[pos + 1];
-		// check if our current position has a higher value than the neighbour pixels
+		// Check if our current position has a higher value than the neighbour pixels
 		if (leftPixel <= pixel && rightPixel < pixel) {
 			newPixel = pixel;
 		}
 	}
 
+	barrier(CLK_LOCAL_MEM_FENCE);
 
 	// Check for top and bottom values
 	if (GY > 0 && GY < GH - 1) {
 		float topPixel = in[pos - GW];
 		float bottomPixel = in[pos + GW];
-		// check if our current position has a higher value than the neighbour pixels
+		// Check if our current position has a higher value than the neighbour pixels
 		if (topPixel <= pixel && bottomPixel < pixel) {
 			newPixel += pixel;
 		}
 	}
 
-	out[pos] = newPixel;
-
-
+	// Save output pixel value
+	out[pos] = min (255.0f, newPixel);
 }
 
-__kernel void hysterese(__global float* in, __global float* out) {
-	float low = 30;
-	float high = 80;
+// ====== Hysterese kernel ======
+__kernel void hysterese(__global float* in, __global float* out, int low, int high) {
+	//float low = 30;
+	//float high = 80;
 
+	// Maximum value for a detected edge
 	float edge = 255;
 
+	// Get the work-items 
 	float pixel = in[pos];
 
+	// Value over threashold -> keep save
 	if (pixel >= high) {
 		out[pos] = edge;
 	}
+	// Value under threashold -> discard save
 	else if (pixel <= low) {
 		out[pos] = 0;
 	}
+	// Value in between both threasholds
 	else {
-		// Check for neighbour pixels being over threshold
-		// avoid being at border
+		// Avoid being at border
 		if (GX > 0 && GX < GW - 1 && GY > 0 && GY < GH - 1) {
+			// Get neighbour values
 			float leftPixel = in[pos - 1];
 			float rightPixel = in[pos + 1];
 			float topPixel = in[pos - GW];
 			float bottomPixel = in[pos + GW];
-			if (leftPixel > high || rightPixel > high || topPixel > high || bottomPixel > high) {
+			float topLeftPixel = in[pos - GW - 1];
+			float topRightPixel = in[pos - GW + 1];
+			float bottomLeftPixel = in[pos + GW - 1];
+			float bottomRightPixel = in[pos + GW + 1];
+			// Check for neighbour pixels being over threshold
+			if (leftPixel > high || rightPixel > high || topPixel > high || bottomPixel > high 
+				|| topLeftPixel > high || topRightPixel > high || bottomLeftPixel > high || bottomRightPixel > high) {
 				out[pos] = edge;
 			}
 		}
+		// If at border -> black
 		else {
 			out[pos] = 0;
 		}
