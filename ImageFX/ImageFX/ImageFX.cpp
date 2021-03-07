@@ -44,7 +44,7 @@ int convertToString(const char *filename, std::string& s) {
 // ==== filenames for UI ====
 // ==========================
 
-std::string inputFilename = "images/hate.png";
+std::string inputFilename = "images/Banane.png";
 std::string outputFilename = "ImageFX.bmp";
 
 struct ImgFXWindow : Window {
